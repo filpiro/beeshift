@@ -29,19 +29,55 @@ class DayCell {
   final bool isCurrentWeek;
 }
 
-/// Holds the Calendar's computed grid. Read-only: it never writes.
-///
-/// `null` state means the first load has not finished.
-class CalendarCubit extends Cubit<List<DayCell>?> {
+/// What the Calendar shows: the Data Window's two months, a computed grid per
+/// month once loaded, and which of the two pages is on screen.
+class CalendarState {
+  const CalendarState({
+    required this.months,
+    required this.grids,
+    required this.visibleIndex,
+  });
+
+  /// The Data Window: this month and the next, each at its first day. Exactly
+  /// two — a *viewing* rule only, so Shifts outside it are retained, just not
+  /// reachable.
+  final List<DateTime> months;
+
+  /// One grid per entry in [months]. Null means the first load has not
+  /// finished; both pages arrive together, from a single query.
+  final List<List<DayCell>>? grids;
+
+  final int visibleIndex;
+
+  /// The month the user is currently looking at. The Month Editor targets it,
+  /// which is why it lives here rather than in the widget's PageController.
+  DateTime get visibleMonth => months[visibleIndex];
+
+  CalendarState copyWith({List<List<DayCell>>? grids, int? visibleIndex}) =>
+      CalendarState(
+        months: months,
+        grids: grids ?? this.grids,
+        visibleIndex: visibleIndex ?? this.visibleIndex,
+      );
+}
+
+/// Holds the Calendar's computed grids. Read-only: it never writes.
+class CalendarCubit extends Cubit<CalendarState> {
   CalendarCubit(this._repository, {required DateTime now})
-    : month = DateTime(now.year, now.month),
-      _today = DateTime(now.year, now.month, now.day),
-      super(null);
+    : _today = DateTime(now.year, now.month, now.day),
+      super(
+        CalendarState(
+          months: [
+            DateTime(now.year, now.month),
+            // Month 13 normalises into January of the next year.
+            DateTime(now.year, now.month + 1),
+          ],
+          grids: null,
+          visibleIndex: 0,
+        ),
+      );
 
   final ShiftsRepository _repository;
-
-  /// The month this Calendar page shows, at its first day.
-  final DateTime month;
 
   /// Device-local, established once per load — single user, single timezone,
   /// no UTC modelling. Recomputing it on resume is 06's job.
@@ -61,11 +97,13 @@ class CalendarCubit extends Cubit<List<DayCell>?> {
     _weekStart.day + 7,
   );
 
-  /// Every date the grid shows, Monday-first and always whole weeks, so the
-  /// leading and trailing edges spill into the adjacent months.
-  late final List<DateTime> _dates = _gridDates();
+  /// Every date a month's grid shows, Monday-first and always whole weeks, so
+  /// the leading and trailing edges spill into the adjacent months.
+  late final List<List<DateTime>> _dates = [
+    for (final month in state.months) _gridDates(month),
+  ];
 
-  List<DateTime> _gridDates() {
+  List<DateTime> _gridDates(DateTime month) {
     final leading = month.weekday - 1;
     // Day zero of the next month is the last day of this one.
     final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
@@ -78,20 +116,35 @@ class CalendarCubit extends Cubit<List<DayCell>?> {
     ];
   }
 
-  /// One query for the entire visible grid, not the month bounds — that is
-  /// what makes the filler days' Shifts available without a second fetch.
+  /// One query for both pages' entire grids, not the month bounds — that is
+  /// what makes the filler days' Shifts available, and what makes swiping to
+  /// the second page cost nothing.
   Future<void> load() async {
-    final shifts = await _repository.fetchRange(_dates.first, _dates.last);
-    emit([
-      for (final date in _dates)
-        DayCell(
-          date: date,
-          shift: shifts[isoDate(date)],
-          isFiller: date.month != month.month,
-          isToday: date == _today,
-          isCurrentWeek:
-              !date.isBefore(_weekStart) && date.isBefore(_weekEnd),
-        ),
-    ]);
+    final shifts = await _repository.fetchRange(
+      _dates.first.first,
+      _dates.last.last,
+    );
+    emit(
+      state.copyWith(
+        grids: [
+          for (var page = 0; page < state.months.length; page++)
+            [
+              for (final date in _dates[page])
+                DayCell(
+                  date: date,
+                  shift: shifts[isoDate(date)],
+                  isFiller: date.month != state.months[page].month,
+                  isToday: date == _today,
+                  isCurrentWeek:
+                      !date.isBefore(_weekStart) && date.isBefore(_weekEnd),
+                ),
+            ],
+        ],
+      ),
+    );
   }
+
+  /// Records which page the carousel settled on. Emits only — the data for
+  /// both pages already arrived with [load].
+  void showPage(int index) => emit(state.copyWith(visibleIndex: index));
 }

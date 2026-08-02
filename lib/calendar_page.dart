@@ -6,20 +6,24 @@ import 'calendar_cubit.dart';
 /// Monday first, matching how the Rotation is written.
 const _weekdayInitials = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
 
-/// The month grid. Every decision it draws — which cells exist, which are
-/// filler, what each one shows — was already made in [CalendarCubit].
+/// The Calendar: the Data Window's two months as a carousel. Every decision it
+/// draws — which cells exist, which are filler, what each one shows — was
+/// already made in [CalendarCubit].
 class CalendarPage extends StatelessWidget {
   const CalendarPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<CalendarCubit, List<DayCell>?>(
-      builder: (context, cells) {
-        if (cells == null) {
+    return BlocBuilder<CalendarCubit, CalendarState>(
+      builder: (context, state) {
+        final grids = state.grids;
+        if (grids == null) {
           return const Center(child: CircularProgressIndicator());
         }
         return Column(
           children: [
+            // Outside the carousel: the weekday initials are the same on both
+            // pages, so sliding them would be motion that says nothing.
             Row(
               children: [
                 for (final initial in _weekdayInitials)
@@ -33,27 +37,52 @@ class CalendarPage extends StatelessWidget {
                   ),
               ],
             ),
-            // Rows flex to the available height, so the whole month is on
-            // screen whatever its shape — no scrolling and nothing clipped.
-            for (var row = 0; row < cells.length; row += 7)
-              Expanded(
-                // The band is drawn once per row rather than per cell, so it
-                // reads as one continuous stripe with no seams between days.
-                child: ColoredBox(
-                  color: cells[row].isCurrentWeek
-                      ? Theme.of(context).colorScheme.surfaceContainerHighest
-                      : Colors.transparent,
-                  child: Row(
-                    children: [
-                      for (final cell in cells.skip(row).take(7))
-                        Expanded(child: _DayCellView(cell)),
-                    ],
-                  ),
-                ),
+            Expanded(
+              // Exactly two children, so paging stops at both ends on its own
+              // — there is no third page to clamp against.
+              child: PageView(
+                onPageChanged: context.read<CalendarCubit>().showPage,
+                children: [for (final grid in grids) _MonthGrid(grid)],
               ),
+            ),
           ],
         );
       },
+    );
+  }
+}
+
+/// One month's grid, filling the height it is given.
+class _MonthGrid extends StatelessWidget {
+  const _MonthGrid(this.cells);
+
+  final List<DayCell> cells;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Rows flex to the available height, so the whole month is on screen
+        // whatever its shape — no scrolling and nothing clipped.
+        for (var row = 0; row < cells.length; row += 7)
+          Expanded(
+            // The band is drawn once per row rather than per cell, so it
+            // reads as one continuous stripe with no seams between days.
+            // Reading the row's first cell is enough: a row is always one
+            // whole Monday-first week, so the flag is uniform across it.
+            child: ColoredBox(
+              color: cells[row].isCurrentWeek
+                  ? Theme.of(context).colorScheme.surfaceContainerHighest
+                  : Colors.transparent,
+              child: Row(
+                children: [
+                  for (final cell in cells.skip(row).take(7))
+                    Expanded(child: _DayCellView(cell)),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

@@ -8,7 +8,7 @@ import 'fake_shifts_repository.dart';
 /// assertion here runs without building a widget. "Now" is injected, never
 /// read from the system clock.
 void main() {
-  Future<List<DayCell>> gridFor(
+  Future<CalendarCubit> loadedFor(
     DateTime now, {
     Map<String, ShiftType> shifts = const {},
     FakeShiftsRepository? repository,
@@ -18,7 +18,17 @@ void main() {
       now: now,
     );
     await cubit.load();
-    return cubit.state!;
+    return cubit;
+  }
+
+  /// The current month's grid — the page the Calendar opens on.
+  Future<List<DayCell>> gridFor(
+    DateTime now, {
+    Map<String, ShiftType> shifts = const {},
+    FakeShiftsRepository? repository,
+  }) async {
+    final cubit = await loadedFor(now, shifts: shifts, repository: repository);
+    return cubit.state.grids!.first;
   }
 
   test('a month starting on a Monday has no leading filler', () async {
@@ -95,11 +105,14 @@ void main() {
     expect(cellOn(DateTime(2026, 2, 2)).shift, isNull);
   });
 
-  test('loads with one query spanning the whole visible grid', () async {
+  test('loads with one query spanning the grids of both pages', () async {
     final repository = FakeShiftsRepository();
-    final cells = await gridFor(DateTime(2026, 2, 15), repository: repository);
+    final cubit = await loadedFor(DateTime(2026, 2, 15), repository: repository);
 
-    expect(repository.ranges, [(cells.first.date, cells.last.date)]);
+    final grids = cubit.state.grids!;
+    expect(repository.ranges, [
+      (grids.first.first.date, grids.last.last.date),
+    ]);
   });
 
   test('exactly one cell is today, and it is the injected day', () async {
@@ -171,5 +184,72 @@ void main() {
     expect(cellOn(DateTime(2026, 2, 9)).isCurrentWeek, isTrue);
     expect(cellOn(DateTime(2026, 2, 10)).shift, isNull);
     expect(cellOn(DateTime(2026, 2, 10)).isCurrentWeek, isTrue);
+  });
+
+  test('the Data Window is this month and the next, and nothing else', () async {
+    final cubit = await loadedFor(DateTime(2026, 2, 15));
+
+    expect(cubit.state.months, [DateTime(2026, 2), DateTime(2026, 3)]);
+    expect(cubit.state.grids!.length, 2, reason: 'there is no third page');
+  });
+
+  test('a December "now" puts the next month in the following year', () async {
+    final cubit = await loadedFor(DateTime(2026, 12, 15));
+
+    expect(cubit.state.months, [DateTime(2026, 12), DateTime(2027, 1)]);
+    expect(cubit.state.grids!.last.any((cell) => cell.date.year == 2027), isTrue);
+  });
+
+  test('the visible month starts on this month and follows the page', () async {
+    final cubit = await loadedFor(DateTime(2026, 2, 15));
+
+    expect(cubit.state.visibleMonth, DateTime(2026, 2));
+
+    cubit.showPage(1);
+    expect(cubit.state.visibleMonth, DateTime(2026, 3));
+
+    cubit.showPage(0);
+    expect(cubit.state.visibleMonth, DateTime(2026, 2));
+  });
+
+  test('swiping never fetches — both pages come from the one load', () async {
+    final repository = FakeShiftsRepository();
+    final cubit = await loadedFor(DateTime(2026, 2, 15), repository: repository);
+
+    cubit.showPage(1);
+    cubit.showPage(0);
+
+    expect(repository.ranges.length, 1);
+  });
+
+  test('the second page is the next month, with its own filler', () async {
+    final cubit = await loadedFor(DateTime(2026, 2, 15));
+
+    // March 2026 starts on a Sunday: six leading filler days from February.
+    final next = cubit.state.grids!.last;
+    expect(next.first.date, DateTime(2026, 2, 23));
+    expect(next.take(6).every((cell) => cell.isFiller), isTrue);
+    expect(next[6].date, DateTime(2026, 3, 1));
+  });
+
+  test('a week straddling the two pages is banded on both', () async {
+    // 31 August 2026 is a Monday, so today's week runs 31 August to 6
+    // September — the last row of page one and the first row of page two.
+    final cubit = await loadedFor(DateTime(2026, 8, 31));
+
+    for (final grid in cubit.state.grids!) {
+      final band = grid.where((cell) => cell.isCurrentWeek).toList();
+      expect(band.length, 7);
+      expect(band.first.date, DateTime(2026, 8, 31));
+      expect(band.last.date, DateTime(2026, 9, 6));
+      expect(band.first.isToday, isTrue);
+    }
+
+    // Today appears on both pages, as a real day on one and filler on the
+    // other, and is highlighted either way.
+    final onNextPage = cubit.state.grids!.last.first;
+    expect(onNextPage.date, DateTime(2026, 8, 31));
+    expect(onNextPage.isFiller, isTrue);
+    expect(onNextPage.isToday, isTrue);
   });
 }
