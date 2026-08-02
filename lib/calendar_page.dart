@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'calendar_cubit.dart';
+import 'month_editor_cubit.dart';
+import 'month_editor_page.dart';
+import 'shifts_repository.dart';
 
 /// Monday first, matching how the Rotation is written.
 const _weekdayInitials = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
@@ -10,7 +13,12 @@ const _weekdayInitials = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
 /// draws — which cells exist, which are filler, what each one shows — was
 /// already made in [CalendarCubit].
 class CalendarPage extends StatefulWidget {
-  const CalendarPage({super.key});
+  const CalendarPage({super.key, required this.repository});
+
+  /// Handed on to the Month Editor, which is the only thing here that writes.
+  /// It arrives from the app's wiring rather than through [CalendarCubit],
+  /// which is read-only and has no business lending out a write path.
+  final ShiftsRepository repository;
 
   @override
   State<CalendarPage> createState() => _CalendarPageState();
@@ -80,10 +88,39 @@ class _CalendarPageState extends State<CalendarPage>
                 ),
               ),
             ),
+            // Below the carousel, so it is clear the button acts on the month
+            // you swiped to rather than on some month it chose for you.
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: FilledButton(
+                onPressed: () => _openEditor(context),
+                child: const Text('Modifica'),
+              ),
+            ),
           ],
         );
       },
     );
+  }
+
+  /// Opens the Month Editor on whichever month is on screen, pre-loaded from
+  /// the grid already in hand. On the way back the Calendar re-queries — a
+  /// local read, no sync: read-your-writes means the row is already there.
+  Future<void> _openEditor(BuildContext context) async {
+    final calendar = context.read<CalendarCubit>();
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => BlocProvider(
+          create: (_) => MonthEditorCubit(
+            widget.repository,
+            month: calendar.state.visibleMonth,
+            shifts: calendar.state.visibleMonthShifts,
+          ),
+          child: const MonthEditorPage(),
+        ),
+      ),
+    );
+    await calendar.load();
   }
 }
 

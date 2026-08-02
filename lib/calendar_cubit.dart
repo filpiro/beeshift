@@ -53,6 +53,16 @@ class CalendarState {
   /// which is why it lives here rather than in the widget's PageController.
   DateTime get visibleMonth => months[visibleIndex];
 
+  /// What the Month Editor opens pre-loaded with: the Shifts recorded for the
+  /// visible month, and only that month — the page's filler days belong to a
+  /// neighbour and are not the editor's to write. Read from the grid already
+  /// loaded, so opening the editor costs no query.
+  Map<String, ShiftType> get visibleMonthShifts => {
+    for (final cell in grids![visibleIndex])
+      if (!cell.isFiller && cell.shift != null)
+        isoDate(cell.date): cell.shift!,
+  };
+
   CalendarState copyWith({List<List<DayCell>>? grids, int? visibleIndex}) =>
       CalendarState(
         months: months,

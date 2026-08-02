@@ -12,16 +12,16 @@ Nothing is ever deleted. The six Shift Types cover every real day, so an Empty d
 
 **Blocked by:** 05 — the editor targets the visible month.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The Calendar's button opens the editor for the month currently on screen, and the editor shows which month that is
-- [ ] Every day of the target month is listed with date and weekday
-- [ ] Each day offers all six Shift Types as radios, labelled with their names
-- [ ] Existing Shifts for the month arrive pre-selected
-- [ ] Radio taps mutate local state only; nothing reaches the network until Save
-- [ ] Save issues exactly one batch upsert for the whole month
-- [ ] Untouched days retain their existing Shift; untouched empty days are not written
-- [ ] The batch payload's exact contents are asserted at the state seam for a mixed month — some pre-existing, some newly selected, some left alone
-- [ ] After a successful save the editor pops and the Calendar reflects the change
-- [ ] No sync is triggered by the save
-- [ ] No delete operation exists anywhere in the flow
+- [x] The Calendar's button opens the editor for the month currently on screen, and the editor shows which month that is
+- [x] Every day of the target month is listed with date and weekday
+- [x] Each day offers all six Shift Types as radios, labelled with their names
+- [x] Existing Shifts for the month arrive pre-selected
+- [x] Radio taps mutate local state only; nothing reaches the network until Save
+- [x] Save issues exactly one batch upsert for the whole month
+- [x] Untouched days retain their existing Shift; untouched empty days are not written
+- [x] The batch payload's exact contents are asserted at the state seam for a mixed month — some pre-existing, some newly selected, some left alone
+- [x] After a successful save the editor pops and the Calendar reflects the change
+- [x] No sync is triggered by the save
+- [x] No delete operation exists anywhere in the flow

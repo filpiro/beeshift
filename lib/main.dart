@@ -54,7 +54,7 @@ class MainApp extends StatelessWidget {
               return BlocProvider(
                 create: (_) =>
                     CalendarCubit(repository, clock: DateTime.now)..load(),
-                child: const CalendarPage(),
+                child: CalendarPage(repository: repository),
               );
             },
           ),

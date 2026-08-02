@@ -18,7 +18,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: BlocProvider.value(value: cubit, child: const CalendarPage()),
+          body: BlocProvider.value(
+            value: cubit,
+            child: CalendarPage(repository: repository),
+          ),
         ),
       ),
     );

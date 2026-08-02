@@ -19,6 +19,9 @@ class FakeShiftsRepository implements ShiftsRepository {
   /// happened before the query rather than merely that both happened.
   final List<String> calls = [];
 
+  /// One entry per [upsertAll] call: the exact payload it was handed.
+  final List<Map<String, ShiftType>> batches = [];
+
   @override
   Future<void> connect() async {
     calls.add('connect');
@@ -46,6 +49,7 @@ class FakeShiftsRepository implements ShiftsRepository {
   @override
   Future<void> upsertAll(Map<String, ShiftType> shifts) async {
     calls.add('upsertAll');
+    batches.add({...shifts});
     _shifts.addAll(shifts);
   }
 }
