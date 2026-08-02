@@ -9,8 +9,36 @@ const _weekdayInitials = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
 /// The Calendar: the Data Window's two months as a carousel. Every decision it
 /// draws — which cells exist, which are filler, what each one shows — was
 /// already made in [CalendarCubit].
-class CalendarPage extends StatelessWidget {
+class CalendarPage extends StatefulWidget {
   const CalendarPage({super.key});
+
+  @override
+  State<CalendarPage> createState() => _CalendarPageState();
+}
+
+class _CalendarPageState extends State<CalendarPage>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Resume, not cold start: Android rarely kills this app, so a cold-start
+  /// trigger would almost never fire — and the highlight would still be
+  /// pointing at yesterday.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      context.read<CalendarCubit>().refresh();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,11 +66,18 @@ class CalendarPage extends StatelessWidget {
               ],
             ),
             Expanded(
-              // Exactly two children, so paging stops at both ends on its own
-              // — there is no third page to clamp against.
-              child: PageView(
-                onPageChanged: context.read<CalendarCubit>().showPage,
-                children: [for (final grid in grids) _MonthGrid(grid)],
+              child: RefreshIndicator(
+                onRefresh: context.read<CalendarCubit>().refresh,
+                // The pull comes from inside a page, so it reaches here one
+                // viewport deeper than the default predicate accepts.
+                notificationPredicate: (notification) =>
+                    notification.depth == 1,
+                // Exactly two children, so paging stops at both ends on its
+                // own — there is no third page to clamp against.
+                child: PageView(
+                  onPageChanged: context.read<CalendarCubit>().showPage,
+                  children: [for (final grid in grids) _MonthGrid(grid)],
+                ),
               ),
             ),
           ],
@@ -60,6 +95,18 @@ class _MonthGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The grid never scrolls — it is sized to the viewport. The scroll view
+    // exists only so the pull-down gesture has something to overscroll, which
+    // is what RefreshIndicator listens to.
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: SizedBox(height: constraints.maxHeight, child: _grid(context)),
+      ),
+    );
+  }
+
+  Widget _grid(BuildContext context) {
     return Column(
       children: [
         // Rows flex to the available height, so the whole month is on screen

@@ -15,7 +15,7 @@ void main() {
   }) async {
     final cubit = CalendarCubit(
       repository ?? FakeShiftsRepository(shifts),
-      now: now,
+      clock: () => now,
     );
     await cubit.load();
     return cubit;
@@ -251,5 +251,86 @@ void main() {
     expect(onNextPage.date, DateTime(2026, 8, 31));
     expect(onNextPage.isFiller, isTrue);
     expect(onNextPage.isToday, isTrue);
+  });
+
+  group('sync triggers', () {
+    /// A cubit whose "now" the test moves, standing in for time passing while
+    /// the app sat in the background.
+    (CalendarCubit, FakeShiftsRepository, void Function(DateTime)) movable(
+      DateTime now, {
+      Map<String, ShiftType> shifts = const {},
+    }) {
+      var current = now;
+      final repository = FakeShiftsRepository(shifts);
+      final cubit = CalendarCubit(repository, clock: () => current);
+      return (cubit, repository, (next) => current = next);
+    }
+
+    test('a refresh syncs, and only then queries', () async {
+      final (cubit, repository, _) = movable(DateTime(2026, 2, 15));
+      await cubit.load();
+      repository.calls.clear();
+
+      await cubit.refresh();
+
+      expect(repository.calls, ['sync', 'fetchRange']);
+    });
+
+    test('"today" is recomputed on refresh', () async {
+      final (cubit, _, setNow) = movable(DateTime(2026, 2, 15, 23, 45));
+      await cubit.load();
+      expect(
+        cubit.state.grids!.first.singleWhere((cell) => cell.isToday).date,
+        DateTime(2026, 2, 15),
+      );
+
+      // Backgrounded overnight: the highlight must have moved by morning.
+      setNow(DateTime(2026, 2, 16, 8, 10));
+      await cubit.refresh();
+
+      expect(
+        cubit.state.grids!.first.singleWhere((cell) => cell.isToday).date,
+        DateTime(2026, 2, 16),
+      );
+      final band =
+          cubit.state.grids!.first.where((cell) => cell.isCurrentWeek).toList();
+      expect(band.first.date, DateTime(2026, 2, 16), reason: 'a new week');
+    });
+
+    test('the Data Window rolls forward on refresh', () async {
+      final (cubit, repository, setNow) = movable(DateTime(2026, 2, 15));
+      await cubit.load();
+      expect(cubit.state.months, [DateTime(2026, 2), DateTime(2026, 3)]);
+
+      setNow(DateTime(2026, 3, 1));
+      await cubit.refresh();
+
+      expect(cubit.state.months, [DateTime(2026, 3), DateTime(2026, 4)]);
+      expect(cubit.state.grids!.last.any((cell) => cell.date.month == 4), isTrue);
+      // The re-query covers the new window, not the old one.
+      expect(repository.ranges.last.$1, cubit.state.grids!.first.first.date);
+      expect(repository.ranges.last.$2, cubit.state.grids!.last.last.date);
+    });
+
+    test('a write is not followed by a sync', () async {
+      // Writes go to the primary and read-your-writes shows them at once, so
+      // a post-write sync would push nothing and pull nothing.
+      final (cubit, repository, _) = movable(DateTime(2026, 2, 15));
+      await cubit.load();
+      repository.calls.clear();
+
+      await repository.upsertAll({'2026-02-16': ShiftType.notte});
+      await cubit.load();
+
+      expect(repository.calls, ['upsertAll', 'fetchRange']);
+    });
+
+    test('opening the Calendar does not sync', () async {
+      final (cubit, repository, _) = movable(DateTime(2026, 2, 15));
+      await cubit.load();
+      cubit.showPage(1);
+
+      expect(repository.calls, ['fetchRange']);
+    });
   });
 }

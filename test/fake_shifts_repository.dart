@@ -15,26 +15,37 @@ class FakeShiftsRepository implements ShiftsRepository {
   /// One entry per [fetchRange] call, in order.
   final List<(DateTime, DateTime)> ranges = [];
 
-  @override
-  Future<void> connect() async {}
+  /// Every call, by name, in order — so a test can assert that a sync
+  /// happened before the query rather than merely that both happened.
+  final List<String> calls = [];
 
   @override
-  Future<void> sync() async {}
+  Future<void> connect() async {
+    calls.add('connect');
+  }
+
+  @override
+  Future<void> sync() async {
+    calls.add('sync');
+  }
 
   @override
   Future<Map<String, ShiftType>> fetchRange(DateTime from, DateTime to) async {
+    calls.add('fetchRange');
     ranges.add((from, to));
     final fromIso = isoDate(from);
     final toIso = isoDate(to);
     return {
       for (final entry in _shifts.entries)
-        if (entry.key.compareTo(fromIso) >= 0 && entry.key.compareTo(toIso) <= 0)
+        if (entry.key.compareTo(fromIso) >= 0 &&
+            entry.key.compareTo(toIso) <= 0)
           entry.key: entry.value,
     };
   }
 
   @override
   Future<void> upsertAll(Map<String, ShiftType> shifts) async {
+    calls.add('upsertAll');
     _shifts.addAll(shifts);
   }
 }

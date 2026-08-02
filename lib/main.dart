@@ -23,7 +23,8 @@ Future<ShiftsRepository> _openRepository() async {
     authToken: _authToken,
   );
   await repository.connect();
-  await repository.sync();
+  // No sync here: opening the app is instant and never waits on the network.
+  // Resume and pull-to-refresh are the only triggers — see ticket 06.
   return repository;
 }
 
@@ -52,7 +53,7 @@ class MainApp extends StatelessWidget {
               }
               return BlocProvider(
                 create: (_) =>
-                    CalendarCubit(repository, now: DateTime.now())..load(),
+                    CalendarCubit(repository, clock: DateTime.now)..load(),
                 child: const CalendarPage(),
               );
             },

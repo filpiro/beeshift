@@ -61,17 +61,20 @@ class CalendarState {
       );
 }
 
+/// The Data Window for an instant: this month and the next.
+List<DateTime> _dataWindow(DateTime now) => [
+  DateTime(now.year, now.month),
+  // Month 13 normalises into January of the next year.
+  DateTime(now.year, now.month + 1),
+];
+
 /// Holds the Calendar's computed grids. Read-only: it never writes.
 class CalendarCubit extends Cubit<CalendarState> {
-  CalendarCubit(this._repository, {required DateTime now})
-    : _today = DateTime(now.year, now.month, now.day),
+  CalendarCubit(this._repository, {required DateTime Function() clock})
+    : _clock = clock,
       super(
         CalendarState(
-          months: [
-            DateTime(now.year, now.month),
-            // Month 13 normalises into January of the next year.
-            DateTime(now.year, now.month + 1),
-          ],
+          months: _dataWindow(clock()),
           grids: null,
           visibleIndex: 0,
         ),
@@ -79,29 +82,10 @@ class CalendarCubit extends Cubit<CalendarState> {
 
   final ShiftsRepository _repository;
 
-  /// Device-local, established once per load — single user, single timezone,
-  /// no UTC modelling. Recomputing it on resume is 06's job.
-  final DateTime _today;
-
-  /// The Monday of today's week, and the Monday after it. Half-open, so the
-  /// band is a plain range test rather than grid-index arithmetic — which is
-  /// what keeps it correct when the band spills into an adjacent month.
-  late final DateTime _weekStart = DateTime(
-    _today.year,
-    _today.month,
-    _today.day - (_today.weekday - 1),
-  );
-  late final DateTime _weekEnd = DateTime(
-    _weekStart.year,
-    _weekStart.month,
-    _weekStart.day + 7,
-  );
-
-  /// Every date a month's grid shows, Monday-first and always whole weeks, so
-  /// the leading and trailing edges spill into the adjacent months.
-  late final List<List<DateTime>> _dates = [
-    for (final month in state.months) _gridDates(month),
-  ];
+  /// Read afresh on every [load], so resuming after midnight — or after a
+  /// month has ended — moves "today" and rolls the Data Window forward.
+  /// Device-local: single user, single timezone, no UTC modelling.
+  final DateTime Function() _clock;
 
   List<DateTime> _gridDates(DateTime month) {
     final leading = month.weekday - 1;
@@ -119,29 +103,61 @@ class CalendarCubit extends Cubit<CalendarState> {
   /// One query for both pages' entire grids, not the month bounds — that is
   /// what makes the filler days' Shifts available, and what makes swiping to
   /// the second page cost nothing.
+  ///
+  /// No sync: a load is a read, and reads come from the local replica.
   Future<void> load() async {
+    final now = _clock();
+    final today = DateTime(now.year, now.month, now.day);
+    // The Monday of today's week, and the Monday after it. Half-open, so the
+    // band is a plain range test rather than grid-index arithmetic — which is
+    // what keeps it correct when the band spills into an adjacent month.
+    final weekStart = DateTime(
+      today.year,
+      today.month,
+      today.day - (today.weekday - 1),
+    );
+    final weekEnd = DateTime(
+      weekStart.year,
+      weekStart.month,
+      weekStart.day + 7,
+    );
+    final months = _dataWindow(now);
+    // Every date a month's grid shows, Monday-first and always whole weeks, so
+    // the leading and trailing edges spill into the adjacent months.
+    final dates = [for (final month in months) _gridDates(month)];
+
     final shifts = await _repository.fetchRange(
-      _dates.first.first,
-      _dates.last.last,
+      dates.first.first,
+      dates.last.last,
     );
     emit(
-      state.copyWith(
+      CalendarState(
+        months: months,
         grids: [
-          for (var page = 0; page < state.months.length; page++)
+          for (var page = 0; page < months.length; page++)
             [
-              for (final date in _dates[page])
+              for (final date in dates[page])
                 DayCell(
                   date: date,
                   shift: shifts[isoDate(date)],
-                  isFiller: date.month != state.months[page].month,
-                  isToday: date == _today,
+                  isFiller: date.month != months[page].month,
+                  isToday: date == today,
                   isCurrentWeek:
-                      !date.isBefore(_weekStart) && date.isBefore(_weekEnd),
+                      !date.isBefore(weekStart) && date.isBefore(weekEnd),
                 ),
             ],
         ],
+        visibleIndex: state.visibleIndex,
       ),
     );
+  }
+
+  /// The only sync trigger there is: resume and pull-to-refresh both land
+  /// here. Sync first, then load — a load that ran first would query rows the
+  /// sync was about to bring in.
+  Future<void> refresh() async {
+    await _repository.sync();
+    await load();
   }
 
   /// Records which page the carousel settled on. Emits only — the data for
