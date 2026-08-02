@@ -21,3 +21,16 @@ Failure handling is the next-but-one ticket; here, success is the path being bui
 - [ ] Ordering is asserted: sync completes before the query runs, on both triggers
 - [ ] A test asserts that no sync occurs after a write
 - [ ] No periodic timer and no background sync exists anywhere
+- [ ] The cold-start `sync()` left in `main.dart` by 02 is removed — see the comment below
+
+## Comments
+
+**There is a third trigger to delete when this ticket runs.** `_openRepository()`
+in `lib/main.dart` still awaits `repository.sync()` before the first frame,
+carried over from ticket 02 where it was the only way to prove Turso rows
+reached the device. It is exactly the cold-start trigger this ticket rules out,
+and it makes opening the app wait on the network, against the spec's "Reads
+always come from a local copy, so opening the app is instant and never waits on
+the network." Ticket 03's review flagged it; it was left in place because
+removing it before the resume and pull-to-refresh triggers exist would leave the
+app with no sync at all.

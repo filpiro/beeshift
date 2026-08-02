@@ -42,11 +42,11 @@ class CalendarCubit extends Cubit<List<DayCell>?> {
     final leading = month.weekday - 1;
     // Day zero of the next month is the last day of this one.
     final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
-    final cells = ((leading + daysInMonth) / 7).ceil() * 7;
+    final cellCount = ((leading + daysInMonth) / 7).ceil() * 7;
     return [
       // Out-of-range days normalise into the adjacent month, which keeps this
       // free of Duration arithmetic and therefore of daylight-saving drift.
-      for (var i = 0; i < cells; i++)
+      for (var i = 0; i < cellCount; i++)
         DateTime(month.year, month.month, i + 1 - leading),
     ];
   }

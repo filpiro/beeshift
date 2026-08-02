@@ -10,7 +10,7 @@ The computed grid — which cells exist, which are filler, what each one shows �
 
 **Blocked by:** 02.
 
-**Status:** in-review — on-device render unverified (needs the physical device, as 02).
+**Status:** done
 
 - [x] The current month renders as a grid with day numbers and Shift Codes
 - [x] Weeks start Monday; every row has exactly seven cells
@@ -40,6 +40,30 @@ Grid shapes covered: June 2026 (Monday start), February 2026 (Sunday start,
 six leading filler days) and February 2027 (28 days on a Monday — the only
 shape with no filler at all).
 
-Not verified on a device: `flutter analyze` and all nine tests pass on the
-Windows host, but the emulator still can't render (see 02), so the actual
-pixels are unchecked.
+**Verified on the emulator, and 02's rendering problem is gone.** The Pixel 9
+emulator (Android 16, API 36) draws the grid correctly — 02's Impeller
+`Requested texture size (1, 1)` failure did not reproduce, and `sync()` did not
+hang either. August 2026 renders as six rows starting Saturday, with 27–31 July
+and 1–6 September dimmed at the edges, and the `N` `S` `R` that 02 hand-inserted
+into Turso showing on the 3rd to the 5th. Screenshot taken via
+`adb exec-out screencap`.
+
+`flutter analyze` clean, nine tests pass.
+
+### Review
+
+Two-axis review run against the ticket and the spec. No missing or partial
+requirements on either axis, and no hard standards violations.
+
+Acted on: an `int` named `cells` inside `_gridDates` shadowed the meaning
+"cells" carries everywhere else (a list of `DayCell`) — renamed `cellCount`.
+
+Raised and deliberately left: `main.dart` still awaits `sync()` on cold start,
+which the spec rules out as a trigger. It is 02's line, and 06 owns sync
+triggers; removing it now would leave the app with no sync at all until 06
+lands. Recorded on 06 as an explicit deletion step.
+
+Raised and rejected: that whole-cell `Opacity` dims a filler day's number as
+well as its Shift Code, where the ticket only asks for the Code to be dimmed.
+The emulator screenshot shows filler numbers still legible at 0.35, and dimming
+the whole cell is what makes the edges read as adjacent months.
