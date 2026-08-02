@@ -37,11 +37,18 @@ class CalendarPage extends StatelessWidget {
             // screen whatever its shape — no scrolling and nothing clipped.
             for (var row = 0; row < cells.length; row += 7)
               Expanded(
-                child: Row(
-                  children: [
-                    for (final cell in cells.skip(row).take(7))
-                      Expanded(child: _DayCellView(cell)),
-                  ],
+                // The band is drawn once per row rather than per cell, so it
+                // reads as one continuous stripe with no seams between days.
+                child: ColoredBox(
+                  color: cells[row].isCurrentWeek
+                      ? Theme.of(context).colorScheme.surfaceContainerHighest
+                      : Colors.transparent,
+                  child: Row(
+                    children: [
+                      for (final cell in cells.skip(row).take(7))
+                        Expanded(child: _DayCellView(cell)),
+                    ],
+                  ),
                 ),
               ),
           ],
@@ -65,7 +72,23 @@ class _DayCellView extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('${cell.date.day}', style: theme.textTheme.labelMedium),
+          // The disc is what makes today findable without reading a date.
+          // Every cell carries the same padding, so only the colour moves.
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: cell.isToday
+                ? ShapeDecoration(
+                    color: theme.colorScheme.primary,
+                    shape: const StadiumBorder(),
+                  )
+                : null,
+            child: Text(
+              '${cell.date.day}',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: cell.isToday ? theme.colorScheme.onPrimary : null,
+              ),
+            ),
+          ),
           Text(cell.shift?.code ?? '', style: theme.textTheme.titleMedium),
         ],
       ),

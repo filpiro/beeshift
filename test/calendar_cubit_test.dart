@@ -101,4 +101,75 @@ void main() {
 
     expect(repository.ranges, [(cells.first.date, cells.last.date)]);
   });
+
+  test('exactly one cell is today, and it is the injected day', () async {
+    // A time of day, not midnight: "now" is an instant, today is a day.
+    final cells = await gridFor(DateTime(2026, 2, 15, 23, 45));
+
+    expect(
+      cells.where((cell) => cell.isToday).map((cell) => cell.date),
+      [DateTime(2026, 2, 15)],
+    );
+  });
+
+  test('the current week is a band of seven cells containing today', () async {
+    final cells = await gridFor(DateTime(2026, 2, 15));
+
+    final band = cells.where((cell) => cell.isCurrentWeek).toList();
+    expect(band.length, 7);
+    expect(band.first.date, DateTime(2026, 2, 9)); // Monday
+    expect(band.last.date, DateTime(2026, 2, 15)); // Sunday
+    expect(band.singleWhere((cell) => cell.isToday).date, DateTime(2026, 2, 15));
+  });
+
+  test('the band is contiguous — one row, never a scatter', () async {
+    final cells = await gridFor(DateTime(2026, 2, 15));
+
+    final first = cells.indexWhere((cell) => cell.isCurrentWeek);
+    expect(first % 7, 0, reason: 'a band starts on a Monday column');
+    expect(
+      cells.sublist(first, first + 7).every((cell) => cell.isCurrentWeek),
+      isTrue,
+    );
+  });
+
+  test('on the first of a month the band covers previous-month filler', () async {
+    // 1 February 2026 is a Sunday: the band is six leading filler days
+    // from January plus the 1st itself.
+    final cells = await gridFor(DateTime(2026, 2, 1));
+
+    final band = cells.where((cell) => cell.isCurrentWeek).toList();
+    expect(band.first.date, DateTime(2026, 1, 26));
+    expect(band.last.date, DateTime(2026, 2, 1));
+    expect(band.where((cell) => cell.isFiller).length, 6);
+    expect(cells.first.isCurrentWeek, isTrue);
+  });
+
+  test('on the last day of a month the band covers next-month filler', () async {
+    // 30 June 2026 is a Tuesday: the band runs into five days of July.
+    final cells = await gridFor(DateTime(2026, 6, 30));
+
+    final band = cells.where((cell) => cell.isCurrentWeek).toList();
+    expect(band.first.date, DateTime(2026, 6, 29));
+    expect(band.last.date, DateTime(2026, 7, 5));
+    expect(band.where((cell) => cell.isFiller).length, 5);
+    expect(cells.last.isCurrentWeek, isTrue);
+  });
+
+  test('highlighting ignores whether the day has a Shift', () async {
+    final cells = await gridFor(
+      DateTime(2026, 2, 15),
+      shifts: {'2026-02-09': ShiftType.notte}, // Monday of the current week
+    );
+
+    DayCell cellOn(DateTime date) =>
+        cells.firstWhere((cell) => cell.date == date);
+
+    // Today is Empty and still today; a banded day is banded either way.
+    expect(cellOn(DateTime(2026, 2, 15)).shift, isNull);
+    expect(cellOn(DateTime(2026, 2, 15)).isToday, isTrue);
+    expect(cellOn(DateTime(2026, 2, 9)).isCurrentWeek, isTrue);
+    expect(cellOn(DateTime(2026, 2, 10)).shift, isNull);
+    expect(cellOn(DateTime(2026, 2, 10)).isCurrentWeek, isTrue);
+  });
 }

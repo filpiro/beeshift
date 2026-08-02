@@ -11,6 +11,8 @@ class DayCell {
     required this.date,
     required this.shift,
     required this.isFiller,
+    required this.isToday,
+    required this.isCurrentWeek,
   });
 
   final DateTime date;
@@ -19,6 +21,12 @@ class DayCell {
   final ShiftType? shift;
 
   final bool isFiller;
+
+  /// Both highlights are independent of [shift] and of [isFiller]: a filler
+  /// day in the current week is banded like any other.
+  final bool isToday;
+
+  final bool isCurrentWeek;
 }
 
 /// Holds the Calendar's computed grid. Read-only: it never writes.
@@ -27,12 +35,31 @@ class DayCell {
 class CalendarCubit extends Cubit<List<DayCell>?> {
   CalendarCubit(this._repository, {required DateTime now})
     : month = DateTime(now.year, now.month),
+      _today = DateTime(now.year, now.month, now.day),
       super(null);
 
   final ShiftsRepository _repository;
 
   /// The month this Calendar page shows, at its first day.
   final DateTime month;
+
+  /// Device-local, established once per load — single user, single timezone,
+  /// no UTC modelling. Recomputing it on resume is 06's job.
+  final DateTime _today;
+
+  /// The Monday of today's week, and the Monday after it. Half-open, so the
+  /// band is a plain range test rather than grid-index arithmetic — which is
+  /// what keeps it correct when the band spills into an adjacent month.
+  late final DateTime _weekStart = DateTime(
+    _today.year,
+    _today.month,
+    _today.day - (_today.weekday - 1),
+  );
+  late final DateTime _weekEnd = DateTime(
+    _weekStart.year,
+    _weekStart.month,
+    _weekStart.day + 7,
+  );
 
   /// Every date the grid shows, Monday-first and always whole weeks, so the
   /// leading and trailing edges spill into the adjacent months.
@@ -61,6 +88,9 @@ class CalendarCubit extends Cubit<List<DayCell>?> {
           date: date,
           shift: shifts[isoDate(date)],
           isFiller: date.month != month.month,
+          isToday: date == _today,
+          isCurrentWeek:
+              !date.isBefore(_weekStart) && date.isBefore(_weekEnd),
         ),
     ]);
   }
