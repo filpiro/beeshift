@@ -28,11 +28,27 @@ Future<ShiftsRepository> _openRepository() async {
   return repository;
 }
 
-// Lazy top-level: opened once, not on every rebuild.
-final _repository = _openRepository();
+class MainApp extends StatefulWidget {
+  const MainApp({super.key, this.open = _openRepository});
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+  /// How the app gets its repository. Injected only so a test can fail the
+  /// one thing the app cannot degrade around, then let it succeed.
+  final Future<ShiftsRepository> Function() open;
+
+  @override
+  State<MainApp> createState() => _MainAppState();
+}
+
+class _MainAppState extends State<MainApp> {
+  /// Held in state rather than at the top level so Retry can replace it: a
+  /// Future runs once, so retrying means opening a new one.
+  late Future<ShiftsRepository> _repository = _open();
+
+  /// Opening starts immediately, but the FutureBuilder only subscribes at the
+  /// next build — so a failure landing in between would be reported as an
+  /// unhandled async error. [Future.ignore] marks it handled without hiding
+  /// it: the builder still receives it and draws the retry screen.
+  Future<ShiftsRepository> _open() => widget.open()..ignore();
 
   @override
   Widget build(BuildContext context) {
@@ -42,10 +58,18 @@ class MainApp extends StatelessWidget {
           child: FutureBuilder(
             future: _repository,
             builder: (context, snapshot) {
-              // ponytail: bare error text and spinner. Ticket 08 makes these
-              // the real full-screen error with Retry.
+              // Full screen, because there is no app without the database —
+              // showing an empty Calendar would be pretending otherwise.
               if (snapshot.hasError) {
-                return Center(child: Text('${snapshot.error}'));
+                // A statement body, not an arrow: setState must not be handed
+                // a closure that returns the Future it has just assigned.
+                return _ConnectError(
+                  onRetry: () {
+                    setState(() {
+                      _repository = _open();
+                    });
+                  },
+                );
               }
               final repository = snapshot.data;
               if (repository == null) {
@@ -59,6 +83,27 @@ class MainApp extends StatelessWidget {
             },
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The one failure the app cannot degrade around.
+class _ConnectError extends StatelessWidget {
+  const _ConnectError({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text('Impossibile aprire il database.'),
+          const SizedBox(height: 12),
+          FilledButton(onPressed: onRetry, child: const Text('Riprova')),
+        ],
       ),
     );
   }

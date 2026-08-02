@@ -82,17 +82,20 @@ void main() {
 
     final radio = tester.widgetList<Radio<ShiftType>>(
       find.descendant(
-        of: find.ancestor(
-          of: find.text('1 Dom'),
-          matching: find.byType(Column),
-        ).last,
+        // The nearest Column is the day's row; the ones further out belong to
+        // the page's layout.
+        of: find
+            .ancestor(of: find.text('1 Dom'), matching: find.byType(Column))
+            .first,
         matching: find.byType(Radio<ShiftType>),
       ),
     );
     expect(radio.length, ShiftType.values.length);
     expect(
       tester
-          .widget<RadioGroup<ShiftType>>(find.byType(RadioGroup<ShiftType>).first)
+          .widget<RadioGroup<ShiftType>>(
+            find.byType(RadioGroup<ShiftType>).first,
+          )
           .groupValue,
       ShiftType.notte,
     );
@@ -127,5 +130,66 @@ void main() {
     // Popped back to the Calendar, which now shows the saved Shift.
     expect(find.text('Modifica'), findsOne);
     expect(find.text(ShiftType.riposo.code), findsWidgets);
+  });
+
+  group('when a save fails', () {
+    Future<void> failingSave(WidgetTester tester) async {
+      await pumpCalendar(tester);
+      await openEditor(tester);
+      await tester.tap(find.text('Riposo').first);
+      await tester.pumpAndSettle();
+      repository.failing.add('upsertAll');
+      await tester.tap(find.text('Salva'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the editor stays put, with the selection intact', (
+      tester,
+    ) async {
+      await failingSave(tester);
+
+      expect(find.text('Febbraio 2026'), findsOne, reason: 'still the editor');
+      expect(find.text('Modifica'), findsNothing, reason: 'did not pop');
+      expect(
+        tester
+            .widget<RadioGroup<ShiftType>>(
+              find.byType(RadioGroup<ShiftType>).first,
+            )
+            .groupValue,
+        ShiftType.riposo,
+      );
+    });
+
+    testWidgets('the message is inline and does not go away on its own', (
+      tester,
+    ) async {
+      await failingSave(tester);
+
+      expect(find.byType(MaterialBanner), findsOne);
+      expect(find.byType(SnackBar), findsNothing, reason: 'not a toast');
+
+      // Still there long after any toast would have gone.
+      await tester.pump(const Duration(seconds: 30));
+      await tester.pumpAndSettle();
+      expect(find.byType(MaterialBanner), findsOne);
+    });
+
+    testWidgets('Save retries and succeeds once connectivity returns', (
+      tester,
+    ) async {
+      await failingSave(tester);
+
+      repository.failing.remove('upsertAll');
+      await tester.tap(find.text('Salva'));
+      await tester.pumpAndSettle();
+
+      // Two attempts, one written batch, then the pop and the re-query.
+      expect(repository.calls, ['upsertAll', 'upsertAll', 'fetchRange']);
+      expect(repository.batches, [
+        {'2026-02-01': ShiftType.riposo},
+      ]);
+      expect(find.text('Modifica'), findsOne, reason: 'back on the Calendar');
+      expect(find.text(ShiftType.riposo.code), findsWidgets);
+    });
   });
 }

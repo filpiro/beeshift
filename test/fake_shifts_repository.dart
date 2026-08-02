@@ -22,19 +22,27 @@ class FakeShiftsRepository implements ShiftsRepository {
   /// One entry per [upsertAll] call: the exact payload it was handed.
   final List<Map<String, ShiftType>> batches = [];
 
-  @override
-  Future<void> connect() async {
-    calls.add('connect');
+  /// Fail on demand: method names in here throw instead of succeeding. A test
+  /// adds and removes entries mid-run, which is what lets it assert a retry
+  /// after connectivity comes back.
+  final Set<String> failing = {};
+
+  /// Records the call, then fails it if the test asked for that — recorded
+  /// either way, because a failed attempt still happened.
+  void _called(String name) {
+    calls.add(name);
+    if (failing.contains(name)) throw Exception('$name failed');
   }
 
   @override
-  Future<void> sync() async {
-    calls.add('sync');
-  }
+  Future<void> connect() async => _called('connect');
+
+  @override
+  Future<void> sync() async => _called('sync');
 
   @override
   Future<Map<String, ShiftType>> fetchRange(DateTime from, DateTime to) async {
-    calls.add('fetchRange');
+    _called('fetchRange');
     ranges.add((from, to));
     final fromIso = isoDate(from);
     final toIso = isoDate(to);
@@ -48,7 +56,7 @@ class FakeShiftsRepository implements ShiftsRepository {
 
   @override
   Future<void> upsertAll(Map<String, ShiftType> shifts) async {
-    calls.add('upsertAll');
+    _called('upsertAll');
     batches.add({...shifts});
     _shifts.addAll(shifts);
   }

@@ -13,12 +13,12 @@ Four behaviours:
 
 **Blocked by:** 06, 07 — both failure surfaces have to exist before they can fail properly.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Connect failure shows a full-screen error with a working Retry
-- [ ] Save failure keeps the user on the editor with every selection intact and a non-dismissing error visible
-- [ ] Save can be retried directly after a failure, and succeeds once connectivity returns
-- [ ] Pull-to-refresh failure shows a transient message and leaves the existing data on screen
-- [ ] Resume sync failure produces no UI whatsoever and leaves existing data on screen
-- [ ] All four are asserted at the state seam with a fake repository that fails on demand
-- [ ] A failed sync never clears, empties, or corrupts already-loaded Calendar data
+- [x] Connect failure shows a full-screen error with a working Retry
+- [x] Save failure keeps the user on the editor with every selection intact and a non-dismissing error visible
+- [x] Save can be retried directly after a failure, and succeeds once connectivity returns
+- [x] Pull-to-refresh failure shows a transient message and leaves the existing data on screen
+- [x] Resume sync failure produces no UI whatsoever and leaves existing data on screen
+- [x] All four are asserted at the state seam with a fake repository that fails on demand
+- [x] A failed sync never clears, empties, or corrupts already-loaded Calendar data

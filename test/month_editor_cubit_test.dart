@@ -36,25 +36,28 @@ void main() {
       shifts: {'2026-02-03': ShiftType.notte, '2026-02-04': ShiftType.smonto},
     );
 
-    expect(editor.state, {
+    expect(editor.state.shifts, {
       '2026-02-03': ShiftType.notte,
       '2026-02-04': ShiftType.smonto,
     });
   });
 
-  test('selecting changes local state only — nothing reaches the repository', () {
-    final repository = FakeShiftsRepository();
-    final editor = editorFor(DateTime(2026, 2), repository: repository);
+  test(
+    'selecting changes local state only — nothing reaches the repository',
+    () {
+      final repository = FakeShiftsRepository();
+      final editor = editorFor(DateTime(2026, 2), repository: repository);
 
-    editor.select(DateTime(2026, 2, 5), ShiftType.primo);
-    editor.select(DateTime(2026, 2, 6), ShiftType.riposo);
+      editor.select(DateTime(2026, 2, 5), ShiftType.primo);
+      editor.select(DateTime(2026, 2, 6), ShiftType.riposo);
 
-    expect(editor.state, {
-      '2026-02-05': ShiftType.primo,
-      '2026-02-06': ShiftType.riposo,
-    });
-    expect(repository.calls, isEmpty);
-  });
+      expect(editor.state.shifts, {
+        '2026-02-05': ShiftType.primo,
+        '2026-02-06': ShiftType.riposo,
+      });
+      expect(repository.calls, isEmpty);
+    },
+  );
 
   test('selecting again replaces the day rather than adding to it', () {
     final editor = editorFor(DateTime(2026, 2));
@@ -62,7 +65,7 @@ void main() {
     editor.select(DateTime(2026, 2, 5), ShiftType.primo);
     editor.select(DateTime(2026, 2, 5), ShiftType.ferie);
 
-    expect(editor.state, {'2026-02-05': ShiftType.ferie});
+    expect(editor.state.shifts, {'2026-02-05': ShiftType.ferie});
   });
 
   test('save sends the whole month as exactly one batch upsert', () async {
@@ -92,18 +95,71 @@ void main() {
     expect(repository.calls, ['upsertAll'], reason: 'no sync, one write');
   });
 
-  test('a save that selected nothing still writes only what was loaded', () async {
-    final repository = FakeShiftsRepository({'2026-02-03': ShiftType.notte});
-    final editor = editorFor(
-      DateTime(2026, 2),
-      shifts: {'2026-02-03': ShiftType.notte},
-      repository: repository,
+  test(
+    'a save that selected nothing still writes only what was loaded',
+    () async {
+      final repository = FakeShiftsRepository({'2026-02-03': ShiftType.notte});
+      final editor = editorFor(
+        DateTime(2026, 2),
+        shifts: {'2026-02-03': ShiftType.notte},
+        repository: repository,
+      );
+
+      await editor.save();
+
+      expect(repository.batches, [
+        {'2026-02-03': ShiftType.notte},
+      ]);
+    },
+  );
+
+  group('a failed save', () {
+    test(
+      'reports failure and keeps every selection exactly as it was',
+      () async {
+        final repository = FakeShiftsRepository()..failing.add('upsertAll');
+        final editor = editorFor(DateTime(2026, 2), repository: repository);
+        editor.select(DateTime(2026, 2, 5), ShiftType.primo);
+        editor.select(DateTime(2026, 2, 6), ShiftType.notte);
+
+        expect(await editor.save(), isFalse);
+
+        expect(editor.state.shifts, {
+          '2026-02-05': ShiftType.primo,
+          '2026-02-06': ShiftType.notte,
+        });
+        expect(editor.state.saveFailed, isTrue);
+      },
     );
 
-    await editor.save();
+    test('stays flagged while editing continues — nothing was written', () {
+      final repository = FakeShiftsRepository()..failing.add('upsertAll');
+      final editor = editorFor(DateTime(2026, 2), repository: repository);
 
-    expect(repository.batches, [
-      {'2026-02-03': ShiftType.notte},
-    ]);
+      return editor.save().then((_) {
+        editor.select(DateTime(2026, 2, 7), ShiftType.ferie);
+        expect(editor.state.saveFailed, isTrue);
+      });
+    });
+
+    test(
+      'retries on the same state and clears once connectivity returns',
+      () async {
+        final repository = FakeShiftsRepository()..failing.add('upsertAll');
+        final editor = editorFor(DateTime(2026, 2), repository: repository);
+        editor.select(DateTime(2026, 2, 5), ShiftType.primo);
+        await editor.save();
+
+        repository.failing.remove('upsertAll');
+        expect(await editor.save(), isTrue);
+
+        expect(editor.state.saveFailed, isFalse);
+        expect(repository.calls, ['upsertAll', 'upsertAll']);
+        // The retry sent the same month, not a truncated remnant of it.
+        expect(repository.batches, [
+          {'2026-02-05': ShiftType.primo},
+        ], reason: 'the failed attempt recorded no batch');
+      },
+    );
   });
 }

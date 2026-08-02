@@ -41,11 +41,25 @@ class _CalendarPageState extends State<CalendarPage>
   /// Resume, not cold start: Android rarely kills this app, so a cold-start
   /// trigger would almost never fire — and the highlight would still be
   /// pointing at yesterday.
+  ///
+  /// The result is deliberately dropped: a resume sync is something the user
+  /// never asked for, so its failure gets no UI. Unlocking your phone in a bad
+  /// signal spot must not produce a message.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       context.read<CalendarCubit>().refresh();
     }
+  }
+
+  /// A pull the user made, so a failure gets one transient line — and nothing
+  /// else: the data already on screen is untouched and stays readable.
+  Future<void> _pullToRefresh() async {
+    if (await context.read<CalendarCubit>().refresh()) return;
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Aggiornamento non riuscito')));
   }
 
   @override
@@ -75,7 +89,7 @@ class _CalendarPageState extends State<CalendarPage>
             ),
             Expanded(
               child: RefreshIndicator(
-                onRefresh: context.read<CalendarCubit>().refresh,
+                onRefresh: _pullToRefresh,
                 // The pull comes from inside a page, so it reaches here one
                 // viewport deeper than the default predicate accepts.
                 notificationPredicate: (notification) =>

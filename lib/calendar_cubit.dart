@@ -59,8 +59,7 @@ class CalendarState {
   /// loaded, so opening the editor costs no query.
   Map<String, ShiftType> get visibleMonthShifts => {
     for (final cell in grids![visibleIndex])
-      if (!cell.isFiller && cell.shift != null)
-        isoDate(cell.date): cell.shift!,
+      if (!cell.isFiller && cell.shift != null) isoDate(cell.date): cell.shift!,
   };
 
   CalendarState copyWith({List<List<DayCell>>? grids, int? visibleIndex}) =>
@@ -165,9 +164,19 @@ class CalendarCubit extends Cubit<CalendarState> {
   /// The only sync trigger there is: resume and pull-to-refresh both land
   /// here. Sync first, then load — a load that ran first would query rows the
   /// sync was about to bring in.
-  Future<void> refresh() async {
-    await _repository.sync();
-    await load();
+  ///
+  /// Returns whether it worked, and never throws: the two callers want
+  /// different things from a failure — one line of text for a pull, silence
+  /// for a resume — and neither wants an exception. A failure emits nothing at
+  /// all, so whatever the Calendar already shows stays exactly as it is.
+  Future<bool> refresh() async {
+    try {
+      await _repository.sync();
+      await load();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Records which page the carousel settled on. Emits only — the data for
