@@ -1,5 +1,14 @@
 # 04 — Today and current-week highlighting
 
+> **Half superseded by ticket 09.** The current-week band is gone, and so is
+> `DayCell.isCurrentWeek` — the flag, its range test, and its tests, not just
+> the `ColoredBox` that drew it. Making each day a separate rounded tile left
+> the band nothing coherent to paint on: a row-wide stripe behind detached,
+> gapped tiles reads as a rendering fault. Today's highlight survives, promoted
+> from a stadium disc behind the day number to a filled tile, and is now the
+> only highlight the Calendar has. Everything below about `isToday` still
+> holds; everything about the band is history.
+
 **What to build:** The glance test. Open the app and know instantly where you are in the month without reading a single date — today is visually distinct, and the week containing today is banded so the days immediately around it stand out.
 
 This is what turns the grid from a table into something you can read in under a second, which is the whole point of replacing the PDF.

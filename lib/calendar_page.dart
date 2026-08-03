@@ -1,13 +1,13 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'calendar_cubit.dart';
+import 'italian_dates.dart';
 import 'month_editor_cubit.dart';
 import 'month_editor_page.dart';
 import 'shifts_repository.dart';
-
-/// Monday first, matching how the Rotation is written.
-const _weekdayInitials = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
 
 /// The Calendar: the Data Window's two months as a carousel. Every decision it
 /// draws — which cells exist, which are filler, what each one shows — was
@@ -72,15 +72,25 @@ class _CalendarPageState extends State<CalendarPage>
         }
         return Column(
           children: [
-            // Outside the carousel: the weekday initials are the same on both
-            // pages, so sliding them would be motion that says nothing.
+            // Outside the carousel, and so is the month name: the weekday
+            // initials are the same on both pages, so a header that slid with
+            // the grid would tear in half — half moving, half not. The name
+            // swaps when the page settles instead.
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                monthTitle(state.visibleMonth),
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
             Row(
               children: [
-                for (final initial in _weekdayInitials)
+                for (var day = DateTime.monday; day <= DateTime.sunday; day++)
                   Expanded(
                     child: Center(
                       child: Text(
-                        initial,
+                        // L M M G V S D, straight off the full names.
+                        weekdayNames[day][0],
                         style: Theme.of(context).textTheme.labelSmall,
                       ),
                     ),
@@ -138,7 +148,7 @@ class _CalendarPageState extends State<CalendarPage>
   }
 }
 
-/// One month's grid, filling the height it is given.
+/// One month's grid of square tiles, as large as the space allows.
 class _MonthGrid extends StatelessWidget {
   const _MonthGrid(this.cells);
 
@@ -150,37 +160,43 @@ class _MonthGrid extends StatelessWidget {
     // exists only so the pull-down gesture has something to overscroll, which
     // is what RefreshIndicator listens to.
     return LayoutBuilder(
-      builder: (context, constraints) => SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: SizedBox(height: constraints.maxHeight, child: _grid(context)),
-      ),
-    );
-  }
-
-  Widget _grid(BuildContext context) {
-    return Column(
-      children: [
-        // Rows flex to the available height, so the whole month is on screen
-        // whatever its shape — no scrolling and nothing clipped.
-        for (var row = 0; row < cells.length; row += 7)
-          Expanded(
-            // The band is drawn once per row rather than per cell, so it
-            // reads as one continuous stripe with no seams between days.
-            // Reading the row's first cell is enough: a row is always one
-            // whole Monday-first week, so the flag is uniform across it.
-            child: ColoredBox(
-              color: cells[row].isCurrentWeek
-                  ? Theme.of(context).colorScheme.surfaceContainerHighest
-                  : Colors.transparent,
-              child: Row(
-                children: [
-                  for (final cell in cells.skip(row).take(7))
-                    Expanded(child: _DayCellView(cell)),
-                ],
+      builder: (context, constraints) {
+        final rows = cells.length ~/ 7;
+        // Square is a ceiling, not a lock: whichever of a column's width and a
+        // row's height is smaller wins. A tall phone leaves space below the
+        // grid — which is where the edit button goes — and a short one gives
+        // tiles that are wider than they are tall rather than an overflow.
+        final side = math.min(
+          constraints.maxWidth / 7,
+          constraints.maxHeight / rows,
+        );
+        return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: constraints.maxHeight,
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                width: side * 7,
+                height: side * rows,
+                child: Column(
+                  children: [
+                    for (var row = 0; row < cells.length; row += 7)
+                      Expanded(
+                        child: Row(
+                          children: [
+                            for (final cell in cells.skip(row).take(7))
+                              Expanded(child: _DayCellView(cell)),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
-      ],
+        );
+      },
     );
   }
 }
@@ -194,30 +210,53 @@ class _DayCellView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Today is filled only on the page that owns the day. It also appears as
+    // filler on the next month's page whenever it is the last day of a month,
+    // and a dimmed tile carrying a loud fill is neither one thing nor the
+    // other — so the page that merely borrows the day draws it plainly.
+    final highlighted = cell.isToday && !cell.isFiller;
+    final foreground = highlighted ? theme.colorScheme.onPrimary : null;
     return Opacity(
       opacity: cell.isFiller ? 0.35 : 1,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // The disc is what makes today findable without reading a date.
-          // Every cell carries the same padding, so only the colour moves.
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: cell.isToday
-                ? ShapeDecoration(
-                    color: theme.colorScheme.primary,
-                    shape: const StadiumBorder(),
-                  )
-                : null,
-            child: Text(
-              '${cell.date.day}',
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: cell.isToday ? theme.colorScheme.onPrimary : null,
+      child: Padding(
+        padding: const EdgeInsets.all(2),
+        child: DecoratedBox(
+          decoration: ShapeDecoration(
+            color: highlighted ? theme.colorScheme.primary : null,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              // The fill says everything today's tile needs to say; an outline
+              // on top of it would only muddy the edge.
+              side: highlighted
+                  ? BorderSide.none
+                  : BorderSide(color: theme.colorScheme.outlineVariant),
+            ),
+          ),
+          child: Center(
+            // Tiles get small on a short screen. Scaling down beats clipping,
+            // and beats a layout that only works above some secret width.
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${cell.date.day}',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: foreground,
+                    ),
+                  ),
+                  Text(
+                    cell.shift?.code ?? '',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: foreground,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          Text(cell.shift?.code ?? '', style: theme.textTheme.titleMedium),
-        ],
+        ),
       ),
     );
   }

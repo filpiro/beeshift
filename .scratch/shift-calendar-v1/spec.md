@@ -10,7 +10,7 @@ I also use two devices. Whatever I write down on one has to be visible on the ot
 
 ## Solution
 
-A phone app whose default screen is a proper month Calendar showing my Shift Code on each day, with today and the current week highlighted, so the answer to "what am I on?" is one glance with no reading.
+A phone app whose default screen is a proper month Calendar showing my Shift Code on each day, with today highlighted, so the answer to "what am I on?" is one glance with no reading.
 
 Entering a schedule is a single screen — the Month Editor — reached from the Calendar. It lists the days of whichever month I'm looking at, each with the six Shift Types as radio buttons, pre-filled with whatever is already recorded. I tap my way down the month and press Save once.
 
@@ -23,7 +23,7 @@ Everything is stored in the cloud, so the second device sees it. Reads always co
 3. As a shift worker, I want each day cell to show its Shift Code, so that I can read the month at a glance.
 4. As a shift worker, I want every day cell to always show its day number, so that I can locate a specific date even when no Shift is recorded.
 5. As a shift worker, I want today to be visually distinct, so that I can orient myself instantly without checking the date.
-6. As a shift worker, I want the current week highlighted as a band, so that I can see the days immediately around today.
+6. ~~As a shift worker, I want the current week highlighted as a band, so that I can see the days immediately around today.~~ **Dropped in ticket 09.** Shipped in ticket 04, then removed when day cells became separate rounded tiles: a row-wide stripe behind detached tiles reads as a rendering fault, not a highlight. Today's filled tile answers "what am I on?" directly, which is the question the problem statement actually asks; the band only ever answered a weaker one.
 7. As a shift worker, I want weeks to run Monday to Sunday, so that the grid matches how my Rotation is actually written.
 8. As a shift worker, I want every week row to be a full seven days, so that the grid never looks ragged at the month boundaries.
 9. As a shift worker, I want the filler days at the start and end of a month to show their Shift Codes dimmed, so that I can see the tail of the previous week's Rotation without switching months.
@@ -101,7 +101,7 @@ Only two write operations exist in the app, and after the removal of single-day 
 - Read-only. It never writes. Its state holder exposes load and refresh only.
 - Two-page carousel: current month and next month. No infinite paging.
 - Day cells have **no gesture handling at all** — no tap, no long-press. The FAB is the only route into editing. Tap-to-edit was considered and rejected: accidental taps while scrolling are worse than the tap it saves.
-- The computed grid — cells, which are filler, which is today, which week is current — lives **in the Calendar's state, not in the widget**, so that it is testable through the state seam.
+- The computed grid — cells, which are filler, which is today — lives **in the Calendar's state, not in the widget**, so that it is testable through the state seam.
 - One query per load, spanning the **whole visible grid** (first visible cell to last visible cell), not the exact month bounds. Filler days therefore come back with their real data and render dimmed. No placeholder cell variant exists.
 
 ### Month Editor
@@ -140,7 +140,7 @@ Coverage expected at this seam:
 
 - Data Window derivation, and the wider visible-grid range the query actually spans
 - Monday-start weeks, full seven-day rows, which cells are filler, filler days carrying data
-- Today and current-week identification
+- Today identification (the current-week band was dropped in ticket 09)
 - `today` recomputation on resume, explicitly including the month-rollover case
 - Sync ordering: sync-then-query on resume and on pull-to-refresh, and **no sync after a write** — this is a real regression risk, since the original design specified the opposite
 - Month Editor pre-load, untouched days retaining their value, and the exact contents of the batch payload

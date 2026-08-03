@@ -1,30 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'italian_dates.dart';
 import 'month_editor_cubit.dart';
 import 'shift_type.dart';
 import 'shifts_repository.dart';
 
-/// Italian, indexed by [DateTime.month] — the app has one user, one language.
-/// ponytail: a const list, not the intl package, for twelve strings.
-const _monthNames = [
+/// Indexed by [DateTime.weekday], Monday first. Ticket 11 replaces these with
+/// the full names from [weekdayNames] and deletes this list.
+const _weekdayAbbreviations = [
   '',
-  'Gennaio',
-  'Febbraio',
-  'Marzo',
-  'Aprile',
-  'Maggio',
-  'Giugno',
-  'Luglio',
-  'Agosto',
-  'Settembre',
-  'Ottobre',
-  'Novembre',
-  'Dicembre',
+  'Lun',
+  'Mar',
+  'Mer',
+  'Gio',
+  'Ven',
+  'Sab',
+  'Dom',
 ];
-
-/// Indexed by [DateTime.weekday], Monday first.
-const _weekdayNames = ['', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 
 /// One month, every day of it, six Shift Types each. One Save commits the lot.
 class MonthEditorPage extends StatelessWidget {
@@ -38,7 +31,7 @@ class MonthEditorPage extends StatelessWidget {
       appBar: AppBar(
         // Which month is being edited, spelled out: the Calendar's button
         // targets whatever was on screen, so the editor says which that was.
-        title: Text('${_monthNames[month.month]} ${month.year}'),
+        title: Text(monthTitle(month)),
         actions: [
           // Never disabled, so a failed save is retried by pressing the same
           // button again — there is nothing else to undo or dismiss first.
@@ -103,7 +96,7 @@ class _DayRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${day.day} ${_weekdayNames[day.weekday]}',
+            '${day.day} ${_weekdayAbbreviations[day.weekday]}',
             style: Theme.of(context).textTheme.titleSmall,
           ),
           // Names, not codes: nobody should have to remember what S means.

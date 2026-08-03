@@ -134,74 +134,22 @@ void main() {
     ]);
   });
 
-  test('the current week is a band of seven cells containing today', () async {
-    final cells = await gridFor(DateTime(2026, 2, 15));
-
-    final band = cells.where((cell) => cell.isCurrentWeek).toList();
-    expect(band.length, 7);
-    expect(band.first.date, DateTime(2026, 2, 9)); // Monday
-    expect(band.last.date, DateTime(2026, 2, 15)); // Sunday
-    expect(
-      band.singleWhere((cell) => cell.isToday).date,
-      DateTime(2026, 2, 15),
-    );
-  });
-
-  test('the band is contiguous — one row, never a scatter', () async {
-    final cells = await gridFor(DateTime(2026, 2, 15));
-
-    final first = cells.indexWhere((cell) => cell.isCurrentWeek);
-    expect(first % 7, 0, reason: 'a band starts on a Monday column');
-    expect(
-      cells.sublist(first, first + 7).every((cell) => cell.isCurrentWeek),
-      isTrue,
-    );
-  });
-
-  test(
-    'on the first of a month the band covers previous-month filler',
-    () async {
-      // 1 February 2026 is a Sunday: the band is six leading filler days
-      // from January plus the 1st itself.
-      final cells = await gridFor(DateTime(2026, 2, 1));
-
-      final band = cells.where((cell) => cell.isCurrentWeek).toList();
-      expect(band.first.date, DateTime(2026, 1, 26));
-      expect(band.last.date, DateTime(2026, 2, 1));
-      expect(band.where((cell) => cell.isFiller).length, 6);
-      expect(cells.first.isCurrentWeek, isTrue);
-    },
-  );
-
-  test(
-    'on the last day of a month the band covers next-month filler',
-    () async {
-      // 30 June 2026 is a Tuesday: the band runs into five days of July.
-      final cells = await gridFor(DateTime(2026, 6, 30));
-
-      final band = cells.where((cell) => cell.isCurrentWeek).toList();
-      expect(band.first.date, DateTime(2026, 6, 29));
-      expect(band.last.date, DateTime(2026, 7, 5));
-      expect(band.where((cell) => cell.isFiller).length, 5);
-      expect(cells.last.isCurrentWeek, isTrue);
-    },
-  );
-
-  test('highlighting ignores whether the day has a Shift', () async {
+  /// Ticket 09 dropped the current-week band, so today is the only highlight
+  /// the Calendar's state carries. The band's edge cases — a week spilling into
+  /// an adjacent month — went with it; today is a single day and cannot spill.
+  test('today is the only highlight, Shift or no Shift', () async {
     final cells = await gridFor(
       DateTime(2026, 2, 15),
-      shifts: {'2026-02-09': ShiftType.notte}, // Monday of the current week
+      shifts: {'2026-02-09': ShiftType.notte},
     );
 
     DayCell cellOn(DateTime date) =>
         cells.firstWhere((cell) => cell.date == date);
 
-    // Today is Empty and still today; a banded day is banded either way.
+    // Today is Empty and still today; the day with a Shift is not.
     expect(cellOn(DateTime(2026, 2, 15)).shift, isNull);
     expect(cellOn(DateTime(2026, 2, 15)).isToday, isTrue);
-    expect(cellOn(DateTime(2026, 2, 9)).isCurrentWeek, isTrue);
-    expect(cellOn(DateTime(2026, 2, 10)).shift, isNull);
-    expect(cellOn(DateTime(2026, 2, 10)).isCurrentWeek, isTrue);
+    expect(cellOn(DateTime(2026, 2, 9)).isToday, isFalse);
   });
 
   test(
@@ -259,21 +207,18 @@ void main() {
     expect(next[6].date, DateTime(2026, 3, 1));
   });
 
-  test('a week straddling the two pages is banded on both', () async {
-    // 31 August 2026 is a Monday, so today's week runs 31 August to 6
-    // September — the last row of page one and the first row of page two.
+  test('today appears on both pages when it is the last day of a month', () async {
+    // 31 August 2026 is a Monday, so it is both the last row of page one and
+    // the leading filler of page two. The state flags it on both; which page
+    // actually fills it is the widget's call — see calendar_page_test.
     final cubit = await loadedFor(DateTime(2026, 8, 31));
 
-    for (final grid in cubit.state.grids!) {
-      final band = grid.where((cell) => cell.isCurrentWeek).toList();
-      expect(band.length, 7);
-      expect(band.first.date, DateTime(2026, 8, 31));
-      expect(band.last.date, DateTime(2026, 9, 6));
-      expect(band.first.isToday, isTrue);
-    }
+    final onThisPage = cubit.state.grids!.first.firstWhere(
+      (cell) => cell.date == DateTime(2026, 8, 31),
+    );
+    expect(onThisPage.isFiller, isFalse);
+    expect(onThisPage.isToday, isTrue);
 
-    // Today appears on both pages, as a real day on one and filler on the
-    // other, and is highlighted either way.
     final onNextPage = cubit.state.grids!.last.first;
     expect(onNextPage.date, DateTime(2026, 8, 31));
     expect(onNextPage.isFiller, isTrue);
@@ -319,10 +264,6 @@ void main() {
         cubit.state.grids!.first.singleWhere((cell) => cell.isToday).date,
         DateTime(2026, 2, 16),
       );
-      final band = cubit.state.grids!.first
-          .where((cell) => cell.isCurrentWeek)
-          .toList();
-      expect(band.first.date, DateTime(2026, 2, 16), reason: 'a new week');
     });
 
     test('the Data Window rolls forward on refresh', () async {

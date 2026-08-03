@@ -12,7 +12,6 @@ class DayCell {
     required this.shift,
     required this.isFiller,
     required this.isToday,
-    required this.isCurrentWeek,
   });
 
   final DateTime date;
@@ -22,11 +21,11 @@ class DayCell {
 
   final bool isFiller;
 
-  /// Both highlights are independent of [shift] and of [isFiller]: a filler
-  /// day in the current week is banded like any other.
+  /// The Calendar's only highlight, and independent of [shift] — an Empty day
+  /// is today like any other. It is set on both pages when today is the last
+  /// day of a month, since the next month's grid opens with it as filler;
+  /// which of the two actually draws the highlight is the widget's call.
   final bool isToday;
-
-  final bool isCurrentWeek;
 }
 
 /// What the Calendar shows: the Data Window's two months, a computed grid per
@@ -117,19 +116,6 @@ class CalendarCubit extends Cubit<CalendarState> {
   Future<void> load() async {
     final now = _clock();
     final today = DateTime(now.year, now.month, now.day);
-    // The Monday of today's week, and the Monday after it. Half-open, so the
-    // band is a plain range test rather than grid-index arithmetic — which is
-    // what keeps it correct when the band spills into an adjacent month.
-    final weekStart = DateTime(
-      today.year,
-      today.month,
-      today.day - (today.weekday - 1),
-    );
-    final weekEnd = DateTime(
-      weekStart.year,
-      weekStart.month,
-      weekStart.day + 7,
-    );
     final months = _dataWindow(now);
     // Every date a month's grid shows, Monday-first and always whole weeks, so
     // the leading and trailing edges spill into the adjacent months.
@@ -151,8 +137,6 @@ class CalendarCubit extends Cubit<CalendarState> {
                   shift: shifts[isoDate(date)],
                   isFiller: date.month != months[page].month,
                   isToday: date == today,
-                  isCurrentWeek:
-                      !date.isBefore(weekStart) && date.isBefore(weekEnd),
                 ),
             ],
         ],
