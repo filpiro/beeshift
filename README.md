@@ -11,6 +11,10 @@ Credentials come from the gitignored `env.json` at build time:
 flutter run --dart-define-from-file=env.json
 ```
 
+Running from VS Code works too — `.vscode/launch.json` passes the same flag.
+Launch any other way and the credentials are empty strings, which surfaces as
+`Impossibile aprire il database`.
+
 ## Prerequisites
 
 `libsql_dart` compiles its native library from Rust at build time, so a Rust
