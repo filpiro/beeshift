@@ -1,5 +1,6 @@
 import 'package:beeshift/main.dart';
 import 'package:beeshift/shift_type.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'fake_shifts_repository.dart';
@@ -28,9 +29,9 @@ void main() {
 
     expect(find.text('Impossibile aprire il database.'), findsOne);
     expect(
-      find.text('Modifica'),
+      find.byType(FloatingActionButton),
       findsNothing,
-      reason: 'no Calendar behind it',
+      reason: 'nothing to edit behind a database that would not open',
     );
 
     await tester.tap(find.text('Riprova'));
@@ -39,7 +40,7 @@ void main() {
     // A second attempt was actually made, and the app is now the Calendar.
     expect(attempts, 2);
     expect(find.text('Impossibile aprire il database.'), findsNothing);
-    expect(find.text('Modifica'), findsOne);
+    expect(find.byType(FloatingActionButton), findsOne);
   });
 
   testWidgets('Retry that fails again returns to the same error', (

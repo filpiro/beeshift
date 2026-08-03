@@ -9,6 +9,10 @@ import 'month_editor_cubit.dart';
 import 'month_editor_page.dart';
 import 'shifts_repository.dart';
 
+/// Height kept clear under the grid: a 56dp floating button, the Scaffold's
+/// 16dp margin below it, and 8dp so the last row is not touching it.
+const _fabReserve = 80.0;
+
 /// The Calendar: the Data Window's two months as a carousel. Every decision it
 /// draws — which cells exist, which are filler, what each one shows — was
 /// already made in [CalendarCubit].
@@ -67,63 +71,84 @@ class _CalendarPageState extends State<CalendarPage>
     return BlocBuilder<CalendarCubit, CalendarState>(
       builder: (context, state) {
         final grids = state.grids;
-        if (grids == null) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        return Column(
-          children: [
-            // Outside the carousel, and so is the month name: the weekday
-            // initials are the same on both pages, so a header that slid with
-            // the grid would tear in half — half moving, half not. The name
-            // swaps when the page settles instead.
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(
-                monthTitle(state.visibleMonth),
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            ),
-            Row(
-              children: [
-                for (var day = DateTime.monday; day <= DateTime.sunday; day++)
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        // L M M G V S D, straight off the full names.
-                        weekdayNames[day][0],
-                        style: Theme.of(context).textTheme.labelSmall,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _pullToRefresh,
-                // The pull comes from inside a page, so it reaches here one
-                // viewport deeper than the default predicate accepts.
-                notificationPredicate: (notification) =>
-                    notification.depth == 1,
-                // Exactly two children, so paging stops at both ends on its
-                // own — there is no third page to clamp against.
-                child: PageView(
-                  onPageChanged: context.read<CalendarCubit>().showPage,
-                  children: [for (final grid in grids) _MonthGrid(grid)],
+        // Its own Scaffold, not the app's: that one also hosts the loading
+        // spinner and the connect-error screen, and an edit button floating
+        // over a database that would not open invites editing nothing.
+        return Scaffold(
+          floatingActionButton: grids == null
+              ? null
+              : FloatingActionButton(
+                  onPressed: () => _openEditor(context),
+                  // The icon alone is nameless to a screen reader.
+                  tooltip: 'Modifica',
+                  // A pencil, not a plus: the editor overwrites the month's
+                  // days and never creates a Shift out of nothing.
+                  child: const Icon(Icons.edit),
                 ),
-              ),
-            ),
-            // Below the carousel, so it is clear the button acts on the month
-            // you swiped to rather than on some month it chose for you.
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: FilledButton(
-                onPressed: () => _openEditor(context),
-                child: const Text('Modifica'),
-              ),
-            ),
-          ],
+          body: SafeArea(
+            child: grids == null
+                ? const Center(child: CircularProgressIndicator())
+                : _body(context, state, grids),
+          ),
         );
       },
+    );
+  }
+
+  /// The loaded Calendar: the header, and the carousel under it.
+  Widget _body(
+    BuildContext context,
+    CalendarState state,
+    List<List<DayCell>> grids,
+  ) {
+    return Column(
+      children: [
+        // Outside the carousel, and so is the month name: the weekday
+        // initials are the same on both pages, so a header that slid with
+        // the grid would tear in half — half moving, half not. The name
+        // swaps when the page settles instead.
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Text(
+            monthTitle(state.visibleMonth),
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ),
+        Row(
+          children: [
+            for (var day = DateTime.monday; day <= DateTime.sunday; day++)
+              Expanded(
+                child: Center(
+                  child: Text(
+                    // L M M G V S D, straight off the full names.
+                    weekdayNames[day][0],
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        Expanded(
+          child: Padding(
+            // The floating button overlaps whatever is under it, and on a
+            // short screen the grid reaches the bottom. Reserved here so
+            // the last row stops above it rather than under it.
+            padding: const EdgeInsets.only(bottom: _fabReserve),
+            child: RefreshIndicator(
+              onRefresh: _pullToRefresh,
+              // The pull comes from inside a page, so it reaches here one
+              // viewport deeper than the default predicate accepts.
+              notificationPredicate: (notification) => notification.depth == 1,
+              // Exactly two children, so paging stops at both ends on its
+              // own — there is no third page to clamp against.
+              child: PageView(
+                onPageChanged: context.read<CalendarCubit>().showPage,
+                children: [for (final grid in grids) _MonthGrid(grid)],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

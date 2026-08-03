@@ -24,11 +24,9 @@ void main() {
     await calendar.load();
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(
-          body: BlocProvider.value(
-            value: calendar,
-            child: CalendarPage(repository: repository),
-          ),
+        home: BlocProvider.value(
+          value: calendar,
+          child: CalendarPage(repository: repository),
         ),
       ),
     );
@@ -37,7 +35,7 @@ void main() {
   }
 
   Future<void> openEditor(WidgetTester tester) async {
-    await tester.tap(find.text('Modifica'));
+    await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
   }
 
@@ -128,7 +126,7 @@ void main() {
       {'2026-02-01': ShiftType.riposo},
     ]);
     // Popped back to the Calendar, which now shows the saved Shift.
-    expect(find.text('Modifica'), findsOne);
+    expect(find.byType(FloatingActionButton), findsOne);
     expect(find.text(ShiftType.riposo.code), findsWidgets);
   });
 
@@ -149,7 +147,11 @@ void main() {
       await failingSave(tester);
 
       expect(find.text('Febbraio 2026'), findsOne, reason: 'still the editor');
-      expect(find.text('Modifica'), findsNothing, reason: 'did not pop');
+      expect(
+        find.byType(FloatingActionButton),
+        findsNothing,
+        reason: 'did not pop',
+      );
       expect(
         tester
             .widget<RadioGroup<ShiftType>>(
@@ -188,7 +190,11 @@ void main() {
       expect(repository.batches, [
         {'2026-02-01': ShiftType.riposo},
       ]);
-      expect(find.text('Modifica'), findsOne, reason: 'back on the Calendar');
+      expect(
+        find.byType(FloatingActionButton),
+        findsOne,
+        reason: 'back on the Calendar',
+      );
       expect(find.text(ShiftType.riposo.code), findsWidgets);
     });
   });

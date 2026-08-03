@@ -12,10 +12,48 @@ A floating button overlaps whatever is under it. On a short screen the grid fill
 
 **Blocked by:** 09.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The Month Editor is reached from a floating action button in the bottom-right corner, carrying a pencil icon
-- [ ] The `Modifica` button below the carousel is gone
-- [ ] The button opens the Month Editor on whichever month is on screen, and the Calendar still re-queries on the way back
-- [ ] The button is not present on the loading screen or the database-connect error screen
-- [ ] The button never covers a day cell, including on a short screen where the grid fills the available height
+- [x] The Month Editor is reached from a floating action button in the bottom-right corner, carrying a pencil icon
+- [x] The `Modifica` button below the carousel is gone
+- [x] The button opens the Month Editor on whichever month is on screen, and the Calendar still re-queries on the way back
+- [x] The button is not present on the loading screen or the database-connect error screen
+- [x] The button never covers a day cell, including on a short screen where the grid fills the available height
+
+## Comments
+
+`CalendarPage` returns its own `Scaffold`, and `main.dart` no longer wraps
+everything in one: each of the three states — spinner, connect error, Calendar
+— brings its own. So the FAB cannot exist unless the Calendar does, without
+anything having to hide it. Within the Calendar it is `null` while `grids` is
+`null`, which covers the Calendar's own first load.
+
+The grid reserves `_fabReserve` (80dp: a 56dp button, the Scaffold's 16dp
+bottom margin, 8dp of gap) as bottom padding on the carousel rather than
+inside `_MonthGrid`. That keeps 09's `side = min(width / 7, height / rows)`
+arithmetic untouched — it just gets a shorter box. On a tall phone the tiles
+are already width-capped, so the reserve costs nothing visible.
+
+`tooltip: 'Modifica'` is not decoration: an icon-only button is nameless to a
+screen reader. The word is the one the old button carried.
+
+Tests: the overlap criterion is asserted geometrically — every tile's rect
+inside the `PageView` against the FAB's rect, on a 360x420 screen where the
+grid does reach the bottom. Checked it bites by setting the reserve to zero;
+it fails. The Month Editor's tests now tap the FAB instead of the text, and
+`main_test` asserts on the FAB's absence rather than on the old label.
+
+**Verified on the emulator.** Pixel 9, Android 16: Agosto 2026 with the pencil
+FAB bottom-right clear of the 31 August row, and tapping it opens the editor
+on Agosto 2026.
+
+`flutter analyze` clean, 59 tests pass.
+
+### Review
+
+Self-review of the diff, inline. `ScaffoldMessenger.of` in the pull-to-refresh
+handler now resolves above the Calendar's Scaffold rather than below the app's
+— it still finds `MaterialApp`'s messenger, and the failed-pull test still
+sees the SnackBar. The reserve is a constant rather than measured from the
+real FAB; a measured one would need a key and a post-frame pass to save 80dp
+of nothing on screens where the grid does not reach the bottom.

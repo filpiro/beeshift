@@ -207,23 +207,26 @@ void main() {
     expect(next[6].date, DateTime(2026, 3, 1));
   });
 
-  test('today appears on both pages when it is the last day of a month', () async {
-    // 31 August 2026 is a Monday, so it is both the last row of page one and
-    // the leading filler of page two. The state flags it on both; which page
-    // actually fills it is the widget's call — see calendar_page_test.
-    final cubit = await loadedFor(DateTime(2026, 8, 31));
+  test(
+    'today appears on both pages when it is the last day of a month',
+    () async {
+      // 31 August 2026 is a Monday, so it is both the last row of page one and
+      // the leading filler of page two. The state flags it on both; which page
+      // actually fills it is the widget's call — see calendar_page_test.
+      final cubit = await loadedFor(DateTime(2026, 8, 31));
 
-    final onThisPage = cubit.state.grids!.first.firstWhere(
-      (cell) => cell.date == DateTime(2026, 8, 31),
-    );
-    expect(onThisPage.isFiller, isFalse);
-    expect(onThisPage.isToday, isTrue);
+      final onThisPage = cubit.state.grids!.first.firstWhere(
+        (cell) => cell.date == DateTime(2026, 8, 31),
+      );
+      expect(onThisPage.isFiller, isFalse);
+      expect(onThisPage.isToday, isTrue);
 
-    final onNextPage = cubit.state.grids!.last.first;
-    expect(onNextPage.date, DateTime(2026, 8, 31));
-    expect(onNextPage.isFiller, isTrue);
-    expect(onNextPage.isToday, isTrue);
-  });
+      final onNextPage = cubit.state.grids!.last.first;
+      expect(onNextPage.date, DateTime(2026, 8, 31));
+      expect(onNextPage.isFiller, isTrue);
+      expect(onNextPage.isToday, isTrue);
+    },
+  );
 
   group('sync triggers', () {
     /// A cubit whose "now" the test moves, standing in for time passing while

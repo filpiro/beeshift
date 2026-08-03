@@ -15,6 +15,9 @@ void main() {
 }
 
 Future<ShiftsRepository> _openRepository() async {
+  // Without the defines the URL is empty and libSQL fails with something that
+  // says nothing about the actual mistake. See the README for how to run.
+  assert(_syncUrl.isNotEmpty, 'Missing --dart-define-from-file=env.json');
   // Application support, not cache — Android can reclaim the cache directory.
   final dir = await getApplicationSupportDirectory();
   final repository = ShiftsRepository.replica(
@@ -53,36 +56,43 @@ class _MainAppState extends State<MainApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: Scaffold(
-        body: SafeArea(
-          child: FutureBuilder(
-            future: _repository,
-            builder: (context, snapshot) {
-              // Full screen, because there is no app without the database —
-              // showing an empty Calendar would be pretending otherwise.
-              if (snapshot.hasError) {
-                // A statement body, not an arrow: setState must not be handed
-                // a closure that returns the Future it has just assigned.
-                return _ConnectError(
+      // No Scaffold here: each of the three states brings its own, so the
+      // Calendar's edit button cannot float over the other two.
+      home: FutureBuilder(
+        future: _repository,
+        builder: (context, snapshot) {
+          // Full screen, because there is no app without the database —
+          // showing an empty Calendar would be pretending otherwise.
+          if (snapshot.hasError) {
+            // The screen stays plain — the cause goes to the console, so a
+            // build-config mistake doesn't look like a dead network.
+            debugPrint('Opening the database failed: ${snapshot.error}');
+            // A statement body, not an arrow: setState must not be handed
+            // a closure that returns the Future it has just assigned.
+            return Scaffold(
+              body: SafeArea(
+                child: _ConnectError(
                   onRetry: () {
                     setState(() {
                       _repository = _open();
                     });
                   },
-                );
-              }
-              final repository = snapshot.data;
-              if (repository == null) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              return BlocProvider(
-                create: (_) =>
-                    CalendarCubit(repository, clock: DateTime.now)..load(),
-                child: CalendarPage(repository: repository),
-              );
-            },
-          ),
-        ),
+                ),
+              ),
+            );
+          }
+          final repository = snapshot.data;
+          if (repository == null) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          return BlocProvider(
+            create: (_) =>
+                CalendarCubit(repository, clock: DateTime.now)..load(),
+            child: CalendarPage(repository: repository),
+          );
+        },
       ),
     );
   }

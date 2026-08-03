@@ -18,11 +18,9 @@ void main() {
     await cubit.load();
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(
-          body: BlocProvider.value(
-            value: cubit,
-            child: CalendarPage(repository: repository),
-          ),
+        home: BlocProvider.value(
+          value: cubit,
+          child: CalendarPage(repository: repository),
         ),
       ),
     );
@@ -61,30 +59,28 @@ void main() {
     expect(repository.calls, isEmpty);
   });
 
-  group('the tile grid', () {
-    /// The Calendar at a chosen "now", on a screen of a chosen size.
-    Future<void> pumpAt(
-      WidgetTester tester,
-      DateTime now, {
-      Size size = const Size(390, 844),
-    }) async {
-      tester.view.physicalSize = size * tester.view.devicePixelRatio;
-      addTearDown(tester.view.resetPhysicalSize);
-      repository = FakeShiftsRepository();
-      final cubit = CalendarCubit(repository, clock: () => now);
-      await cubit.load();
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: BlocProvider.value(
-              value: cubit,
-              child: CalendarPage(repository: repository),
-            ),
-          ),
+  /// The Calendar at a chosen "now", on a screen of a chosen size.
+  Future<void> pumpAt(
+    WidgetTester tester,
+    DateTime now, {
+    Size size = const Size(390, 844),
+  }) async {
+    tester.view.physicalSize = size * tester.view.devicePixelRatio;
+    addTearDown(tester.view.resetPhysicalSize);
+    repository = FakeShiftsRepository();
+    final cubit = CalendarCubit(repository, clock: () => now);
+    await cubit.load();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocProvider.value(
+          value: cubit,
+          child: CalendarPage(repository: repository),
         ),
-      );
-    }
+      ),
+    );
+  }
 
+  group('the tile grid', () {
     /// A tile filled with the primary colour — the one and only highlight.
     Finder filledTiles(WidgetTester tester) {
       final scheme = Theme.of(
@@ -117,10 +113,7 @@ void main() {
 
       expect(filledTiles(tester), findsOne);
       expect(
-        find.descendant(
-          of: filledTiles(tester),
-          matching: find.text('15'),
-        ),
+        find.descendant(of: filledTiles(tester), matching: find.text('15')),
         findsOne,
       );
     });
@@ -148,16 +141,53 @@ void main() {
       // A six-row month on a short screen: the tiles compress below square
       // rather than running off the bottom. An overflow fails the test by
       // itself — the harness reports it as an exception.
-      await pumpAt(
-        tester,
-        DateTime(2026, 8, 15),
-        size: const Size(360, 420),
-      );
+      await pumpAt(tester, DateTime(2026, 8, 15), size: const Size(360, 420));
 
       expect(tester.takeException(), isNull);
       // Every day of August is on screen: no scrolling, nothing clipped.
       for (final day in [1, 15, 31]) {
         expect(find.text('$day'), findsWidgets, reason: 'August $day');
+      }
+    });
+  });
+
+  group('the edit button', () {
+    testWidgets('is a pencil FAB in the bottom-right corner', (tester) async {
+      await pumpAt(tester, DateTime(2026, 2, 15));
+
+      final fab = find.byType(FloatingActionButton);
+      expect(fab, findsOne);
+      expect(
+        find.descendant(of: fab, matching: find.byIcon(Icons.edit)),
+        findsOne,
+        reason: 'a pencil — the editor only ever overwrites',
+      );
+      expect(find.text('Modifica'), findsNothing, reason: 'the old button');
+
+      // Bottom-right: past the middle on both axes.
+      final rect = tester.getRect(fab);
+      final screen = tester.getRect(find.byType(CalendarPage));
+      expect(rect.center.dx, greaterThan(screen.center.dx));
+      expect(rect.center.dy, greaterThan(screen.center.dy));
+    });
+
+    testWidgets('never covers a day, even on a short screen', (tester) async {
+      // A six-row month with the grid filling the height — the case where the
+      // last row would otherwise run under the button.
+      await pumpAt(tester, DateTime(2026, 8, 15), size: const Size(360, 420));
+
+      final fab = tester.getRect(find.byType(FloatingActionButton));
+      final tiles = find.descendant(
+        of: find.byType(PageView),
+        matching: find.byType(DecoratedBox),
+      );
+      for (final tile in tiles.evaluate()) {
+        final box = tile.renderObject! as RenderBox;
+        expect(
+          (box.localToGlobal(Offset.zero) & box.size).overlaps(fab),
+          isFalse,
+          reason: 'a day cell is under the button',
+        );
       }
     });
   });
@@ -174,11 +204,9 @@ void main() {
       await cubit.load();
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: BlocProvider.value(
-              value: cubit,
-              child: CalendarPage(repository: repository),
-            ),
+          home: BlocProvider.value(
+            value: cubit,
+            child: CalendarPage(repository: repository),
           ),
         ),
       );
