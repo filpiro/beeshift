@@ -46,12 +46,12 @@ void main() {
     await openEditor(tester);
 
     expect(find.text('Febbraio 2026'), findsOne);
-    expect(find.text('1 Dom'), findsOne, reason: '1 February is a Sunday');
+    expect(find.text('1 Domenica'), findsOne, reason: '1 February is a Sunday');
     // The list is lazy, so the last day has to be scrolled to — and February
     // 2026 ends there, with no 29th and nothing from March.
-    await tester.scrollUntilVisible(find.text('28 Sab'), 300);
-    expect(find.text('28 Sab'), findsOne);
-    expect(find.text('29 Dom'), findsNothing);
+    await tester.scrollUntilVisible(find.text('28 Sabato'), 300);
+    expect(find.text('28 Sabato'), findsOne);
+    expect(find.text('29 Domenica'), findsNothing);
   });
 
   testWidgets('swiping first targets the month swiped to', (tester) async {
@@ -64,46 +64,100 @@ void main() {
     expect(find.text('Marzo 2026'), findsOne);
   });
 
-  testWidgets('every day offers the six Shift Types by name', (tester) async {
+  testWidgets('every day offers the six Shift Types as codes', (tester) async {
     await pumpCalendar(tester);
     await openEditor(tester);
 
     // The list is lazy, so assert against the days actually built.
     for (final shift in ShiftType.values) {
-      expect(find.text(shift.label), findsWidgets, reason: shift.label);
+      expect(find.text(shift.code), findsWidgets, reason: shift.code);
+      expect(find.text(shift.label), findsNothing, reason: shift.label);
     }
+    expect(find.byType(Divider), findsNothing, reason: 'space, not lines');
+    expect(find.byType(RadioGroup<ShiftType>), findsNothing);
+    expect(find.byType(Radio<ShiftType>), findsNothing);
   });
 
-  testWidgets('an existing Shift arrives pre-selected', (tester) async {
-    await pumpCalendar(tester, shifts: {'2026-02-01': ShiftType.notte});
-    await openEditor(tester);
-
-    final radio = tester.widgetList<Radio<ShiftType>>(
-      find.descendant(
-        // The nearest Column is the day's row; the ones further out belong to
-        // the page's layout.
-        of: find
-            .ancestor(of: find.text('1 Dom'), matching: find.byType(Column))
-            .first,
-        matching: find.byType(Radio<ShiftType>),
-      ),
-    );
-    expect(radio.length, ShiftType.values.length);
-    expect(
-      tester
-          .widget<RadioGroup<ShiftType>>(
-            find.byType(RadioGroup<ShiftType>).first,
-          )
-          .groupValue,
-      ShiftType.notte,
-    );
-  });
-
-  testWidgets('tapping a radio writes nothing until Save', (tester) async {
+  testWidgets('a day line names the weekday in full', (tester) async {
     await pumpCalendar(tester);
     await openEditor(tester);
 
-    await tester.tap(find.text('Primo').first);
+    expect(find.text('1 Domenica'), findsOne, reason: '1 February is a Sunday');
+  });
+
+  testWidgets('the codes announce their full names, one row, 48dp', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await pumpCalendar(tester);
+    await openEditor(tester);
+
+    for (final shift in ShiftType.values) {
+      expect(
+        find.bySemanticsLabel(shift.label),
+        findsWidgets,
+        reason: shift.label,
+      );
+    }
+
+    // One row, and a target you can hit: the six codes of the first day share
+    // a centre line, and the control they sit in is at least 48dp tall.
+    final firstDay = find.byType(SegmentedButton<ShiftType>).first;
+    expect(tester.getSize(firstDay).height, greaterThanOrEqualTo(48));
+    final row = tester.getCenter(firstDay).dy;
+    for (final shift in ShiftType.values) {
+      expect(
+        tester.getCenter(find.text(shift.code).first).dy,
+        closeTo(row, 1),
+        reason: shift.code,
+      );
+    }
+    semantics.dispose();
+  });
+
+  testWidgets('a Shift Type once chosen cannot be taken back off', (
+    tester,
+  ) async {
+    await pumpCalendar(tester);
+    await openEditor(tester);
+
+    await tester.tap(find.text(ShiftType.riposo.code).first);
+    await tester.pumpAndSettle();
+    // Tapping the selected segment again would empty the selection if the
+    // control were left to its own devices. An Empty day is "not entered yet",
+    // and nothing may put a day back there.
+    await tester.tap(find.text(ShiftType.riposo.code).first);
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<SegmentedButton<ShiftType>>(
+            find.byType(SegmentedButton<ShiftType>).first,
+          )
+          .selected,
+      {ShiftType.riposo},
+    );
+  });
+
+  testWidgets('an existing Shift arrives pre-selected, an Empty day bare', (
+    tester,
+  ) async {
+    await pumpCalendar(tester, shifts: {'2026-02-01': ShiftType.notte});
+    await openEditor(tester);
+
+    final controls = tester.widgetList<SegmentedButton<ShiftType>>(
+      find.byType(SegmentedButton<ShiftType>),
+    );
+    expect(controls.first.selected, {ShiftType.notte});
+    // 2 February has nothing recorded: nothing selected is a real state.
+    expect(controls.elementAt(1).selected, isEmpty);
+  });
+
+  testWidgets('tapping a code writes nothing until Save', (tester) async {
+    await pumpCalendar(tester);
+    await openEditor(tester);
+
+    await tester.tap(find.text(ShiftType.primo.code).first);
     await tester.pumpAndSettle();
 
     expect(repository.calls, isEmpty);
@@ -115,7 +169,7 @@ void main() {
     await pumpCalendar(tester);
     await openEditor(tester);
 
-    await tester.tap(find.text('Riposo').first);
+    await tester.tap(find.text(ShiftType.riposo.code).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Salva'));
     await tester.pumpAndSettle();
@@ -134,7 +188,7 @@ void main() {
     Future<void> failingSave(WidgetTester tester) async {
       await pumpCalendar(tester);
       await openEditor(tester);
-      await tester.tap(find.text('Riposo').first);
+      await tester.tap(find.text(ShiftType.riposo.code).first);
       await tester.pumpAndSettle();
       repository.failing.add('upsertAll');
       await tester.tap(find.text('Salva'));
@@ -154,11 +208,11 @@ void main() {
       );
       expect(
         tester
-            .widget<RadioGroup<ShiftType>>(
-              find.byType(RadioGroup<ShiftType>).first,
+            .widget<SegmentedButton<ShiftType>>(
+              find.byType(SegmentedButton<ShiftType>).first,
             )
-            .groupValue,
-        ShiftType.riposo,
+            .selected,
+        {ShiftType.riposo},
       );
     });
 

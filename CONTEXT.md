@@ -13,7 +13,7 @@ One of the six fixed kinds a Shift can be. Fixed for v1 and not user-configurabl
 _Avoid_: shift (unqualified — that's the day's record), category, kind
 
 **Shift Code**:
-The single letter identifying a Shift Type (`7`, `3`, `N`, `S`, `R`, `F`). The only thing shown in a calendar day cell.
+The single letter identifying a Shift Type (`7`, `3`, `N`, `S`, `R`, `F`). What is shown on screen wherever a Shift Type appears — the calendar day cell and the Month Editor's choices alike. The Italian name is what a screen reader says.
 _Avoid_: symbol, letter, abbreviation
 
 **Rotation**:

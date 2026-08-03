@@ -13,10 +13,12 @@ enum ShiftType {
 
   const ShiftType(this.code, this.label);
 
-  /// The single letter stored in the database and shown in a day cell.
+  /// The single letter stored in the database, and the only thing drawn on
+  /// screen — the Calendar's day cells and the Month Editor's choices alike.
   final String code;
 
-  /// The Italian name, shown wherever the code alone would be cryptic.
+  /// The Italian name. Not drawn anywhere: it is what a screen reader says in
+  /// place of a bare letter.
   final String label;
 
   static ShiftType fromCode(String code) =>

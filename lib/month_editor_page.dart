@@ -6,19 +6,6 @@ import 'month_editor_cubit.dart';
 import 'shift_type.dart';
 import 'shifts_repository.dart';
 
-/// Indexed by [DateTime.weekday], Monday first. Ticket 11 replaces these with
-/// the full names from [weekdayNames] and deletes this list.
-const _weekdayAbbreviations = [
-  '',
-  'Lun',
-  'Mar',
-  'Mer',
-  'Gio',
-  'Ven',
-  'Sab',
-  'Dom',
-];
-
 /// One month, every day of it, six Shift Types each. One Save commits the lot.
 class MonthEditorPage extends StatelessWidget {
   const MonthEditorPage({super.key});
@@ -91,40 +78,47 @@ class _DayRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final editor = context.read<MonthEditorCubit>();
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      // No divider closing the row: once the rows breathe, a line between two
+      // outlined controls is ink competing with the outlines.
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${day.day} ${_weekdayAbbreviations[day.weekday]}',
-            style: Theme.of(context).textTheme.titleSmall,
+            '${day.day} ${weekdayNames[day.weekday]}',
+            style: Theme.of(context).textTheme.titleMedium,
           ),
-          // Names, not codes: nobody should have to remember what S means.
-          // They wrap rather than scroll, so every choice is reachable.
-          RadioGroup<ShiftType>(
-            groupValue: selected,
-            // Non-null: there is no radio that clears a day, so the only way
-            // out of a wrong choice is a different Shift Type.
-            onChanged: (shift) => editor.select(day, shift!),
-            child: Wrap(
-              children: [
-                for (final shift in ShiftType.values)
-                  // The label is part of the tap target, not decoration next
-                  // to it — a bare radio dot is a small thing to hit.
-                  InkWell(
-                    onTap: () => editor.select(day, shift),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Radio<ShiftType>(value: shift),
-                        Text(shift.label),
-                      ],
-                    ),
-                  ),
-              ],
+          const SizedBox(height: 4),
+          // Codes, not names — six Italian names cannot share one row on a
+          // phone, and the codes are what the user reads off the real rota.
+          // The names stay as what a screen reader says.
+          SegmentedButton<ShiftType>(
+            // An Empty day means "not entered yet", so nothing selected has to
+            // be drawable. Returning to it is blocked below, not here.
+            emptySelectionAllowed: true,
+            // The check would take the space the letter needs.
+            showSelectedIcon: false,
+            style: SegmentedButton.styleFrom(
+              // Six segments at a sixth of a phone's width: the default
+              // padding is wider than a single letter can pay for.
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              minimumSize: const Size(0, 48),
             ),
+            segments: [
+              for (final shift in ShiftType.values)
+                ButtonSegment(
+                  value: shift,
+                  label: Text(shift.code, semanticsLabel: shift.label),
+                ),
+            ],
+            selected: {?selected},
+            // Tapping the selected segment would otherwise empty the set, and
+            // nothing may put a day back to "not entered yet". A wrong choice
+            // is corrected by picking a different Shift Type.
+            onSelectionChanged: (chosen) {
+              if (chosen.isNotEmpty) editor.select(day, chosen.single);
+            },
           ),
-          const Divider(height: 1),
         ],
       ),
     );

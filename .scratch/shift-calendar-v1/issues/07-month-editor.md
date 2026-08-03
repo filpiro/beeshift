@@ -1,5 +1,12 @@
 # 07 — Month Editor
 
+> **Partly superseded by ticket 11.** The radio buttons are gone, and so is
+> "names, not just their codes": six Italian names cannot share one row on a
+> phone, so the six Shift Types are a segmented control showing Shift Codes,
+> with the names kept as what a screen reader says. Everything else here —
+> which month the editor targets, one Save for the lot, no way to clear a day
+> — still holds.
+
 **What to build:** The entire write path, and the app's reason to exist beyond viewing. A new schedule arrives; you record it in one pass and it's on both devices.
 
 A button on the Calendar opens the Month Editor for **whichever month the Calendar is showing** — swipe to the month you want, then press it, so you are never surprised by editing the wrong one. The editor lists every day of that month with its date and weekday, each offering the six Shift Types as radio buttons labelled with their names, not just their codes, so you never have to remember what `S` means.
