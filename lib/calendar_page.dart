@@ -86,9 +86,15 @@ class _CalendarPageState extends State<CalendarPage>
                   child: const Icon(Icons.edit),
                 ),
           body: SafeArea(
-            child: grids == null
-                ? const Center(child: CircularProgressIndicator())
-                : _body(context, state, grids),
+            child: switch (grids) {
+              // A first load that failed: the spinner would otherwise spin for
+              // as long as the app is open, saying nothing.
+              null when state.loadFailed => _FirstLoadError(
+                onRetry: context.read<CalendarCubit>().refresh,
+              ),
+              null => const Center(child: CircularProgressIndicator()),
+              _ => _body(context, state, grids),
+            },
           ),
         );
       },
@@ -170,6 +176,31 @@ class _CalendarPageState extends State<CalendarPage>
       ),
     );
     await calendar.load();
+  }
+}
+
+/// Nothing loaded and no way to load it. Retry syncs first, which is what
+/// makes it the cure for a replica that has never been synced.
+class _FirstLoadError extends StatelessWidget {
+  const _FirstLoadError({required this.onRetry});
+
+  final Future<bool> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            'Impossibile leggere i turni.',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          FilledButton(onPressed: onRetry, child: const Text('Riprova')),
+        ],
+      ),
+    );
   }
 }
 

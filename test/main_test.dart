@@ -8,6 +8,8 @@ import 'fake_shifts_repository.dart';
 /// The one failure with no graceful degradation: without the database there is
 /// no app, so it takes the whole screen and offers the only action that helps.
 void main() {
+  _firstLaunch();
+
   testWidgets('a failed connect fills the screen, and Retry re-opens', (
     tester,
   ) async {
@@ -65,5 +67,36 @@ void main() {
 
     expect(attempts, 2);
     expect(find.text('Impossibile aprire il database.'), findsOne);
+  });
+}
+
+/// A replica file that has just been created is an empty SQLite database: the
+/// first read finds no `shifts` table at all. Nothing else in the app ever
+/// syncs before a read, so the first launch has to.
+void _firstLaunch() {
+  test('a replica with no schema is synced before the first read', () async {
+    final repository = FakeShiftsRepository()..schema = false;
+
+    await syncIfEmpty(repository);
+
+    expect(repository.calls, ['hasShiftsTable', 'sync']);
+  });
+
+  test('a replica that already has its schema stays offline', () async {
+    final repository = FakeShiftsRepository();
+
+    await syncIfEmpty(repository);
+
+    expect(repository.calls, ['hasShiftsTable'], reason: 'no network');
+  });
+
+  test('a first sync that fails is left to the error screen', () async {
+    // Offline, a fresh install usually dies earlier, inside connect, which is
+    // what bootstraps the replica. Either way there is nothing to show, so the
+    // failure travels to the retry screen rather than being swallowed here.
+    final repository = FakeShiftsRepository()..schema = false;
+    repository.failing.add('sync');
+
+    await expectLater(syncIfEmpty(repository), throwsA(isA<Exception>()));
   });
 }

@@ -358,6 +358,29 @@ void main() {
       expect(identical(cubit.state, before), isTrue);
     });
 
+    test('a first load that fails says so instead of spinning', () async {
+      // A brand-new replica has no schema, so the very first query throws.
+      // Nothing is on screen to protect, so the failure is state, not silence.
+      final (cubit, repository, _) = movable(DateTime(2026, 2, 15));
+      repository.failing.add('fetchRange');
+
+      expect(await cubit.load(), isFalse, reason: 'it does not throw');
+      expect(cubit.state.grids, isNull);
+      expect(cubit.state.loadFailed, isTrue);
+    });
+
+    test('a retry after a failed first load clears the failure', () async {
+      final (cubit, repository, _) = movable(DateTime(2026, 2, 15));
+      repository.failing.add('fetchRange');
+      await cubit.load();
+
+      repository.failing.clear();
+
+      expect(await cubit.refresh(), isTrue);
+      expect(cubit.state.grids, isNotNull);
+      expect(cubit.state.loadFailed, isFalse);
+    });
+
     test('a refresh succeeds again once connectivity returns', () async {
       final (cubit, repository, _) = movable(DateTime(2026, 2, 15));
       await cubit.load();

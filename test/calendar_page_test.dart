@@ -192,6 +192,53 @@ void main() {
     });
   });
 
+  group('when the very first load fails', () {
+    /// A brand-new install with no schema in the replica: the first query
+    /// throws and there is nothing to draw.
+    Future<void> pumpFirstLoad(WidgetTester tester) async {
+      repository = FakeShiftsRepository();
+      repository.failing.add('fetchRange');
+      final cubit = CalendarCubit(
+        repository,
+        clock: () => DateTime(2026, 2, 15),
+      );
+      await cubit.load();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BlocProvider.value(
+            value: cubit,
+            child: CalendarPage(repository: repository),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('says so rather than spinning forever', (tester) async {
+      await pumpFirstLoad(tester);
+
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text('Impossibile leggere i turni.'), findsOne);
+      expect(
+        find.byType(FloatingActionButton),
+        findsNothing,
+        reason: 'nothing to edit',
+      );
+    });
+
+    testWidgets('Riprova syncs and draws the Calendar', (tester) async {
+      await pumpFirstLoad(tester);
+      repository.failing.clear();
+
+      await tester.tap(find.text('Riprova'));
+      await tester.pumpAndSettle();
+
+      // Sync first: the schema arrives with it, which is the whole point.
+      expect(repository.calls.sublist(1), ['sync', 'fetchRange']);
+      expect(find.text('Febbraio 2026'), findsOne);
+      expect(find.byType(FloatingActionButton), findsOne);
+    });
+  });
+
   group('when a sync fails', () {
     /// The Calendar as loaded, with a Shift on screen to prove a failure
     /// leaves it there.

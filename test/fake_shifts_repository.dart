@@ -34,8 +34,18 @@ class FakeShiftsRepository implements ShiftsRepository {
     if (failing.contains(name)) throw Exception('$name failed');
   }
 
+  /// Whether the replica has a schema. A test sets this false to stand in for
+  /// a brand-new replica file, which is an empty SQLite database.
+  bool schema = true;
+
   @override
   Future<void> connect() async => _called('connect');
+
+  @override
+  Future<bool> hasShiftsTable() async {
+    _called('hasShiftsTable');
+    return schema;
+  }
 
   @override
   Future<void> sync() async => _called('sync');

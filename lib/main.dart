@@ -26,9 +26,22 @@ Future<ShiftsRepository> _openRepository() async {
     authToken: _authToken,
   );
   await repository.connect();
-  // No sync here: opening the app is instant and never waits on the network.
-  // Resume and pull-to-refresh are the only triggers — see ticket 06.
+  // No sync on a normal launch: opening the app is instant and never waits on
+  // the network. Resume and pull-to-refresh are the only triggers — ticket 06.
+  await syncIfEmpty(repository);
   return repository;
+}
+
+/// The one launch that has to wait on the network: the first. Until a sync has
+/// run, the replica has no `shifts` table, and a read of it throws rather than
+/// returning nothing — so every later launch skips this and stays instant.
+///
+/// A failure here is left to travel: it lands on the same screen an unopenable
+/// database does, which is the truth of it — there is no app either way, and
+/// Retry is the only thing that helps.
+Future<void> syncIfEmpty(ShiftsRepository repository) async {
+  if (await repository.hasShiftsTable()) return;
+  await repository.sync();
 }
 
 class MainApp extends StatefulWidget {

@@ -30,6 +30,17 @@ class ShiftsRepository {
 
   Future<void> sync() => _client.sync();
 
+  /// Whether the replica has anything in it yet. A replica file created a
+  /// moment ago is an empty SQLite database — the schema arrives with the
+  /// first sync, not with the file — so a read before then finds no table at
+  /// all rather than no rows.
+  Future<bool> hasShiftsTable() async {
+    final rows = await _client.query(
+      "select name from sqlite_master where type = 'table' and name = 'shifts'",
+    );
+    return rows.isNotEmpty;
+  }
+
   /// Shifts between [from] and [to] inclusive, keyed by ISO date.
   Future<Map<String, ShiftType>> fetchRange(DateTime from, DateTime to) async {
     final rows = await _client.query(

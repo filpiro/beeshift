@@ -35,6 +35,7 @@ class CalendarState {
     required this.months,
     required this.grids,
     required this.visibleIndex,
+    this.loadFailed = false,
   });
 
   /// The Data Window: this month and the next, each at its first day. Exactly
@@ -47,6 +48,11 @@ class CalendarState {
   final List<List<DayCell>>? grids;
 
   final int visibleIndex;
+
+  /// Set only when there was nothing on screen to protect: a first load that
+  /// failed. A later failure leaves whatever is drawn exactly as it is and
+  /// says so through [CalendarCubit.refresh]'s return instead.
+  final bool loadFailed;
 
   /// The month the user is currently looking at. The Month Editor targets it,
   /// which is why it lives here rather than in the widget's PageController.
@@ -61,12 +67,16 @@ class CalendarState {
       if (!cell.isFiller && cell.shift != null) isoDate(cell.date): cell.shift!,
   };
 
-  CalendarState copyWith({List<List<DayCell>>? grids, int? visibleIndex}) =>
-      CalendarState(
-        months: months,
-        grids: grids ?? this.grids,
-        visibleIndex: visibleIndex ?? this.visibleIndex,
-      );
+  CalendarState copyWith({
+    List<List<DayCell>>? grids,
+    int? visibleIndex,
+    bool? loadFailed,
+  }) => CalendarState(
+    months: months,
+    grids: grids ?? this.grids,
+    visibleIndex: visibleIndex ?? this.visibleIndex,
+    loadFailed: loadFailed ?? this.loadFailed,
+  );
 }
 
 /// The Data Window for an instant: this month and the next.
@@ -113,7 +123,11 @@ class CalendarCubit extends Cubit<CalendarState> {
   /// the second page cost nothing.
   ///
   /// No sync: a load is a read, and reads come from the local replica.
-  Future<void> load() async {
+  ///
+  /// Never throws — it is called from a constructor's cascade, where a thrown
+  /// error would go nowhere and leave the spinner spinning. Returns whether it
+  /// worked instead.
+  Future<bool> load() async {
     final now = _clock();
     final today = DateTime(now.year, now.month, now.day);
     final months = _dataWindow(now);
@@ -121,10 +135,17 @@ class CalendarCubit extends Cubit<CalendarState> {
     // the leading and trailing edges spill into the adjacent months.
     final dates = [for (final month in months) _gridDates(month)];
 
-    final shifts = await _repository.fetchRange(
-      dates.first.first,
-      dates.last.last,
-    );
+    final Map<String, ShiftType> shifts;
+    try {
+      shifts = await _repository.fetchRange(dates.first.first, dates.last.last);
+    } catch (_) {
+      // Nothing drawn yet — a brand-new replica has no schema at all, and a
+      // silent failure here is a spinner that never stops. With a Calendar
+      // already on screen the rule from ticket 08 stands: emit nothing, keep
+      // what the user is reading, and let the caller report it.
+      if (state.grids == null) emit(state.copyWith(loadFailed: true));
+      return false;
+    }
     emit(
       CalendarState(
         months: months,
@@ -143,6 +164,7 @@ class CalendarCubit extends Cubit<CalendarState> {
         visibleIndex: state.visibleIndex,
       ),
     );
+    return true;
   }
 
   /// The only sync trigger there is: resume and pull-to-refresh both land
@@ -156,11 +178,10 @@ class CalendarCubit extends Cubit<CalendarState> {
   Future<bool> refresh() async {
     try {
       await _repository.sync();
-      await load();
-      return true;
     } catch (_) {
       return false;
     }
+    return load();
   }
 
   /// Records which page the carousel settled on. Emits only — the data for
