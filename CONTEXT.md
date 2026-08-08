@@ -41,6 +41,14 @@ Requested and approved leave. Non-working, and the only Shift Type the worker ch
 
 _Note_: Smonto, Riposo and Ferie are all non-working days but are **not** interchangeable — they differ by what caused the day off.
 
+**Filter**:
+What the Calendar is currently narrowing to. Two independent groups — the **Shift Filter** (which Shift Types) and the **Weekday Filter** (which days of the week) — each a set of selections that starts empty. An empty group passes everything, so no selection anywhere means the whole Calendar reads normally. A viewing aid on the Calendar only: it never reaches the Month Editor, and it is never stored — it survives a resume and a pull-to-refresh, and is gone after a restart.
+_Avoid_: search, query, selection
+
+**Matched** / **Muted**:
+What the Filter does to a day. A day is matched when it satisfies both groups — OR within a group, AND across the two — and muted otherwise. A muted day is drawn at the same reduced opacity a day outside the month already uses; it is dimmed, never hidden or reordered. An Empty day is muted whenever any Filter is active, since "all Shift Types" means the six, not the absence of one.
+_Avoid_: filtered out, hidden, disabled
+
 ### Screens
 
 **Calendar**:

@@ -64,10 +64,11 @@ void main() {
     WidgetTester tester,
     DateTime now, {
     Size size = const Size(390, 844),
+    Map<String, ShiftType> shifts = const {},
   }) async {
     tester.view.physicalSize = size * tester.view.devicePixelRatio;
     addTearDown(tester.view.resetPhysicalSize);
-    repository = FakeShiftsRepository();
+    repository = FakeShiftsRepository(shifts);
     final cubit = CalendarCubit(repository, clock: () => now);
     await cubit.load();
     await tester.pumpWidget(
@@ -148,6 +149,114 @@ void main() {
       for (final day in [1, 15, 31]) {
         expect(find.text('$day'), findsWidgets, reason: 'August $day');
       }
+    });
+  });
+
+  /// Only the wiring: that a tap reaches the Filter and that the grid redraws
+  /// from it. The match rule itself is asserted on the cubit.
+  group('the Filter', () {
+    /// The opacity a given day is drawn at.
+    double opacityOf(WidgetTester tester, String day) {
+      final tile = find
+          .ancestor(of: find.text(day), matching: find.byType(Opacity))
+          .first;
+      return tester.widget<Opacity>(tile).opacity;
+    }
+
+    Future<void> pumpFiltered(WidgetTester tester) => pumpAt(
+      tester,
+      DateTime(2026, 2, 15),
+      shifts: {
+        '2026-02-02': ShiftType.notte, // Monday
+        '2026-02-03': ShiftType.notte, // Tuesday
+        '2026-02-04': ShiftType.primo, // Wednesday
+      },
+    );
+
+    testWidgets('offers a Shift Code per Shift Type, and the weekday '
+        'initials, above the grid', (tester) async {
+      await pumpFiltered(tester);
+
+      expect(find.byType(FilterChip), findsNWidgets(ShiftType.values.length));
+      // One row of initials, not two: the column heading is the control.
+      expect(find.text('L'), findsOne);
+      final chips = tester.getRect(find.byType(FilterChip).first);
+      expect(
+        chips.top,
+        greaterThan(tester.getRect(find.text('Febbraio 2026')).top),
+      );
+      expect(chips.bottom, lessThan(tester.getRect(find.text('L')).top));
+    });
+
+    testWidgets('tapping a Shift Code dims every day that is not it', (
+      tester,
+    ) async {
+      await pumpFiltered(tester);
+      expect(opacityOf(tester, '4'), 1, reason: 'nothing selected yet');
+
+      await tester.tap(find.widgetWithText(FilterChip, ShiftType.notte.code));
+      await tester.pumpAndSettle();
+
+      expect(opacityOf(tester, '2'), 1, reason: 'an N');
+      expect(opacityOf(tester, '4'), 0.35, reason: 'a 7');
+      expect(opacityOf(tester, '9'), 0.35, reason: 'an Empty day');
+      // Today is 15 February, Empty, and the one filled tile.
+      expect(opacityOf(tester, '15'), 0.35, reason: 'today is not exempt');
+    });
+
+    testWidgets('tapping a weekday initial narrows it further', (tester) async {
+      await pumpFiltered(tester);
+
+      await tester.tap(find.widgetWithText(FilterChip, ShiftType.notte.code));
+      await tester.tap(find.text('L'));
+      await tester.pumpAndSettle();
+
+      expect(opacityOf(tester, '2'), 1, reason: 'a Monday N');
+      expect(opacityOf(tester, '3'), 0.35, reason: 'a Tuesday N');
+    });
+
+    testWidgets('tapping the same control again gives the month back', (
+      tester,
+    ) async {
+      await pumpFiltered(tester);
+
+      await tester.tap(find.widgetWithText(FilterChip, ShiftType.notte.code));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilterChip, ShiftType.notte.code));
+      await tester.pumpAndSettle();
+
+      expect(opacityOf(tester, '4'), 1);
+      expect(opacityOf(tester, '15'), 1);
+    });
+
+    testWidgets('every control speaks its Italian name, its state, and can '
+        'be activated', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpFiltered(tester);
+
+      // The letters are drawn; the names are what is spoken.
+      expect(find.bySemanticsLabel('Lunedì'), findsOne);
+      expect(find.bySemanticsLabel(ShiftType.notte.label), findsOne);
+
+      // The tap action is the half a label cannot cover: without it the
+      // control reads perfectly to a screen reader and then does nothing.
+      expect(
+        tester.getSemantics(find.bySemanticsLabel('Lunedì')),
+        containsSemantics(
+          isButton: true,
+          isSelected: false,
+          hasTapAction: true,
+        ),
+      );
+
+      await tester.tap(find.text('L'));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getSemantics(find.bySemanticsLabel('Lunedì')),
+        containsSemantics(isSelected: true),
+      );
+      handle.dispose();
     });
   });
 

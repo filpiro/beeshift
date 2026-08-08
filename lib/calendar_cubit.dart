@@ -36,6 +36,8 @@ class CalendarState {
     required this.grids,
     required this.visibleIndex,
     this.loadFailed = false,
+    this.shiftFilter = const {},
+    this.weekdayFilter = const {},
   });
 
   /// The Data Window: this month and the next, each at its first day. Exactly
@@ -54,6 +56,37 @@ class CalendarState {
   /// says so through [CalendarCubit.refresh]'s return instead.
   final bool loadFailed;
 
+  /// The Filter's two groups. Empty is the default and means "everything" —
+  /// a group with nothing selected is not a filter at all. Held here rather
+  /// than baked into [DayCell] because it changes on every tap, where
+  /// [DayCell.isFiller] and [DayCell.isToday] are settled once per load.
+  ///
+  /// Never persisted: it lives as long as the process and no longer.
+  final Set<ShiftType> shiftFilter;
+
+  /// [DateTime.monday] to [DateTime.sunday].
+  final Set<int> weekdayFilter;
+
+  /// Whether a day fails the Filter and is therefore drawn dimmed. OR within
+  /// a group, AND across the two.
+  ///
+  /// A filler day is answered on the same terms as any other, and its answer
+  /// makes no visible difference: the widget dims it either way, and never
+  /// twice — 0.35 is a floor, not a multiplier.
+  bool muted(DayCell cell) {
+    // A group with nothing selected is not a filter, so neither group being
+    // selected is not a filter at all.
+    if (shiftFilter.isEmpty && weekdayFilter.isEmpty) return false;
+    // An Empty day cannot answer a question about Shift Types, and does not
+    // become an answer just because the question was only about weekdays.
+    if (cell.shift == null) return true;
+    final wrongShift =
+        shiftFilter.isNotEmpty && !shiftFilter.contains(cell.shift);
+    final wrongDay =
+        weekdayFilter.isNotEmpty && !weekdayFilter.contains(cell.date.weekday);
+    return wrongShift || wrongDay;
+  }
+
   /// The month the user is currently looking at. The Month Editor targets it,
   /// which is why it lives here rather than in the widget's PageController.
   DateTime get visibleMonth => months[visibleIndex];
@@ -71,11 +104,15 @@ class CalendarState {
     List<List<DayCell>>? grids,
     int? visibleIndex,
     bool? loadFailed,
+    Set<ShiftType>? shiftFilter,
+    Set<int>? weekdayFilter,
   }) => CalendarState(
     months: months,
     grids: grids ?? this.grids,
     visibleIndex: visibleIndex ?? this.visibleIndex,
     loadFailed: loadFailed ?? this.loadFailed,
+    shiftFilter: shiftFilter ?? this.shiftFilter,
+    weekdayFilter: weekdayFilter ?? this.weekdayFilter,
   );
 }
 
@@ -162,6 +199,10 @@ class CalendarCubit extends Cubit<CalendarState> {
             ],
         ],
         visibleIndex: state.visibleIndex,
+        // A load is a re-read of the same two months, not a new screen: what
+        // the user selected outlives it, the Month Editor round trip included.
+        shiftFilter: state.shiftFilter,
+        weekdayFilter: state.weekdayFilter,
       ),
     );
     return true;
@@ -183,6 +224,20 @@ class CalendarCubit extends Cubit<CalendarState> {
     }
     return load();
   }
+
+  /// The Filter's two toggles. Emit only: the grids are untouched, since what
+  /// changes is how each day is drawn, not which days there are.
+  void toggleShift(ShiftType type) =>
+      emit(state.copyWith(shiftFilter: _toggled(state.shiftFilter, type)));
+
+  void toggleWeekday(int weekday) => emit(
+    state.copyWith(weekdayFilter: _toggled(state.weekdayFilter, weekday)),
+  );
+
+  static Set<T> _toggled<T>(Set<T> selection, T value) =>
+      selection.contains(value)
+      ? ({...selection}..remove(value))
+      : {...selection, value};
 
   /// Records which page the carousel settled on. Emits only — the data for
   /// both pages already arrived with [load].

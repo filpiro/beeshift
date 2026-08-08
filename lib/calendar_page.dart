@@ -7,6 +7,7 @@ import 'calendar_cubit.dart';
 import 'italian_dates.dart';
 import 'month_editor_cubit.dart';
 import 'month_editor_page.dart';
+import 'shift_type.dart';
 import 'shifts_repository.dart';
 
 /// Height kept clear under the grid: a 56dp floating button, the Scaffold's
@@ -120,16 +121,14 @@ class _CalendarPageState extends State<CalendarPage>
             style: Theme.of(context).textTheme.titleLarge,
           ),
         ),
+        _ShiftFilterRow(selected: state.shiftFilter),
         Row(
           children: [
             for (var day = DateTime.monday; day <= DateTime.sunday; day++)
               Expanded(
-                child: Center(
-                  child: Text(
-                    // L M M G V S D, straight off the full names.
-                    weekdayNames[day][0],
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
+                child: _WeekdayFilter(
+                  weekday: day,
+                  selected: state.weekdayFilter.contains(day),
                 ),
               ),
           ],
@@ -149,7 +148,9 @@ class _CalendarPageState extends State<CalendarPage>
               // own — there is no third page to clamp against.
               child: PageView(
                 onPageChanged: context.read<CalendarCubit>().showPage,
-                children: [for (final grid in grids) _MonthGrid(grid)],
+                children: [
+                  for (final grid in grids) _MonthGrid(grid, state.muted),
+                ],
               ),
             ),
           ),
@@ -204,11 +205,109 @@ class _FirstLoadError extends StatelessWidget {
   }
 }
 
+/// The Shift Filter: the six Shift Codes, tapped on and off. A [Wrap] rather
+/// than a row of equal shares — six single letters fit one line on a phone,
+/// and falling to a second line beats overflowing. A scroll view would have
+/// been worse still: it would fight the pull-to-refresh for the same gesture.
+class _ShiftFilterRow extends StatelessWidget {
+  const _ShiftFilterRow({required this.selected});
+
+  final Set<ShiftType> selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final toggle = context.read<CalendarCubit>().toggleShift;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          for (final type in ShiftType.values)
+            FilterChip(
+              // The letter is drawn, the Italian name is spoken — the same
+              // trade the Month Editor's segments make.
+              label: Text(type.code, semanticsLabel: type.label),
+              selected: selected.contains(type),
+              // A tick beside a one-letter label doubles the chip's width and
+              // says nothing the fill has not already said.
+              showCheckmark: false,
+              onSelected: (_) => toggle(type),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One column heading, which is also the Weekday Filter's control. Not a
+/// [FilterChip]: a chip's own padding would pull the letter off the centre of
+/// the column it labels, and labelling the column is what it is here for.
+class _WeekdayFilter extends StatelessWidget {
+  const _WeekdayFilter({required this.weekday, required this.selected});
+
+  final int weekday;
+
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    void toggle() => context.read<CalendarCubit>().toggleWeekday(weekday);
+    return Semantics(
+      // The bare initial says nothing out loud; the selected state is the
+      // other half of what a filter control has to announce.
+      label: weekdayNames[weekday],
+      button: true,
+      selected: selected,
+      // Excluding the InkWell's semantics takes its tap action with them, so
+      // the action is restated here — otherwise the control announces itself
+      // perfectly and then does nothing when a screen reader activates it.
+      onTap: toggle,
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: toggle,
+        child: SizedBox(
+          // A tap target you can hit, on a row of text that is much shorter.
+          height: 48,
+          child: Center(
+            child: Container(
+              width: 32,
+              height: 32,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                // The chips' selected colour, not the primary that fills
+                // today's tile: one colour, one meaning.
+                color: selected ? theme.colorScheme.secondaryContainer : null,
+              ),
+              child: Text(
+                // L M M G V S D, straight off the full names.
+                weekdayNames[weekday][0],
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: selected
+                      ? theme.colorScheme.onSecondaryContainer
+                      : null,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// One month's grid of square tiles, as large as the space allows.
 class _MonthGrid extends StatelessWidget {
-  const _MonthGrid(this.cells);
+  const _MonthGrid(this.cells, this.muted);
 
   final List<DayCell> cells;
+
+  /// Whether a day fails the Filter — [CalendarState.muted], passed down so
+  /// the tiles decide nothing themselves.
+  final bool Function(DayCell) muted;
 
   @override
   Widget build(BuildContext context) {
@@ -242,7 +341,7 @@ class _MonthGrid extends StatelessWidget {
                         child: Row(
                           children: [
                             for (final cell in cells.skip(row).take(7))
-                              Expanded(child: _DayCellView(cell)),
+                              Expanded(child: _DayCellView(cell, muted(cell))),
                           ],
                         ),
                       ),
@@ -259,9 +358,13 @@ class _MonthGrid extends StatelessWidget {
 
 /// No gesture handling of any kind — the Month Editor is the only way in.
 class _DayCellView extends StatelessWidget {
-  const _DayCellView(this.cell);
+  const _DayCellView(this.cell, this.muted);
 
   final DayCell cell;
+
+  /// Dimmed because it failed the Filter. The same dimming a filler day
+  /// already has, and never on top of it.
+  final bool muted;
 
   @override
   Widget build(BuildContext context) {
@@ -273,7 +376,10 @@ class _DayCellView extends StatelessWidget {
     final highlighted = cell.isToday && !cell.isFiller;
     final foreground = highlighted ? theme.colorScheme.onPrimary : null;
     return Opacity(
-      opacity: cell.isFiller ? 0.35 : 1,
+      // One opacity for both reasons, so a muted filler day is not dimmed
+      // twice. Today's fill dims with everything else: an exception for it
+      // would read as "today matched".
+      opacity: cell.isFiller || muted ? 0.35 : 1,
       child: Padding(
         padding: const EdgeInsets.all(2),
         child: DecoratedBox(

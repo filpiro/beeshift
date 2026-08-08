@@ -228,6 +228,174 @@ void main() {
     },
   );
 
+  /// The match rule, asserted where it lives: two groups, OR within one and
+  /// AND across the two, with an empty group passing everything.
+  group('the Filter', () {
+    /// February 2026, with a Shift on a Monday, a Shift on a Tuesday, and an
+    /// Empty day on another Monday.
+    Future<CalendarCubit> filterable() => loadedFor(
+      DateTime(2026, 2, 15),
+      shifts: {
+        '2026-02-02': ShiftType.notte, // Monday
+        '2026-02-03': ShiftType.notte, // Tuesday
+        '2026-02-04': ShiftType.primo, // Wednesday
+        // 2026-02-09, a Monday, is left Empty on purpose.
+      },
+    );
+
+    /// A day of the current month's page.
+    DayCell cellOn(CalendarCubit cubit, int day) => cubit.state.grids!.first
+        .firstWhere((cell) => cell.date == DateTime(2026, 2, day));
+
+    test('nothing selected mutes nothing, Empty days included', () async {
+      final cubit = await filterable();
+
+      expect(
+        cubit.state.grids!.expand((grid) => grid).any(cubit.state.muted),
+        isFalse,
+      );
+    });
+
+    test('a Shift Filter mutes every other Shift Type, and every Empty '
+        'day', () async {
+      final cubit = await filterable();
+
+      cubit.toggleShift(ShiftType.notte);
+
+      expect(cubit.state.muted(cellOn(cubit, 2)), isFalse, reason: 'N');
+      expect(cubit.state.muted(cellOn(cubit, 3)), isFalse, reason: 'N');
+      expect(cubit.state.muted(cellOn(cubit, 4)), isTrue, reason: '7, not N');
+      expect(cubit.state.muted(cellOn(cubit, 9)), isTrue, reason: 'Empty');
+    });
+
+    test('selections within a group are alternatives', () async {
+      final cubit = await filterable();
+
+      cubit.toggleShift(ShiftType.notte);
+      cubit.toggleShift(ShiftType.primo);
+
+      expect(cubit.state.muted(cellOn(cubit, 2)), isFalse, reason: 'N');
+      expect(cubit.state.muted(cellOn(cubit, 4)), isFalse, reason: '7');
+      expect(cubit.state.muted(cellOn(cubit, 9)), isTrue, reason: 'Empty');
+    });
+
+    test('a Weekday Filter mutes the other six days, Empty days too', () async {
+      final cubit = await filterable();
+
+      cubit.toggleWeekday(DateTime.monday);
+
+      expect(cubit.state.muted(cellOn(cubit, 2)), isFalse, reason: 'Monday');
+      expect(cubit.state.muted(cellOn(cubit, 3)), isTrue, reason: 'Tuesday');
+      // "All Shift Types" means the six, not the absence of one — so a Monday
+      // with nothing recorded is muted like any other non-answer.
+      expect(
+        cubit.state.muted(cellOn(cubit, 9)),
+        isTrue,
+        reason: 'an Empty Monday',
+      );
+    });
+
+    test('the two groups are conditions, not alternatives', () async {
+      final cubit = await filterable();
+
+      cubit.toggleWeekday(DateTime.monday);
+      cubit.toggleShift(ShiftType.notte);
+
+      expect(cubit.state.muted(cellOn(cubit, 2)), isFalse, reason: 'Monday, N');
+      expect(cubit.state.muted(cellOn(cubit, 3)), isTrue, reason: 'N, Tuesday');
+      expect(
+        cubit.state.muted(cellOn(cubit, 16)),
+        isTrue,
+        reason: 'Monday, Empty',
+      );
+    });
+
+    test('today is muted like any other day', () async {
+      // 15 February 2026 is a Sunday and Empty: the one tile the Calendar
+      // fills is not exempt from the rule.
+      final cubit = await filterable();
+
+      cubit.toggleShift(ShiftType.notte);
+
+      expect(cellOn(cubit, 15).isToday, isTrue);
+      expect(cubit.state.muted(cellOn(cubit, 15)), isTrue);
+    });
+
+    test('a filler day is judged like any other day', () async {
+      // 26 and 27 January 2026 are leading filler on February's page. The
+      // answer makes no visible difference — the widget dims filler either
+      // way — but it is the Shift that decides it, never the filler flag.
+      final cubit = await loadedFor(
+        DateTime(2026, 2, 15),
+        shifts: {'2026-01-26': ShiftType.notte, '2026-01-27': ShiftType.primo},
+      );
+      final grid = cubit.state.grids!.first;
+
+      cubit.toggleShift(ShiftType.notte);
+
+      expect(grid.first.isFiller, isTrue);
+      expect(cubit.state.muted(grid.first), isFalse, reason: 'a filler N');
+      expect(cubit.state.muted(grid[1]), isTrue, reason: 'a filler 7');
+    });
+
+    test('the Filter reaches the second page of the carousel', () async {
+      // Both pages are drawn from the one state, so a Filter that stopped at
+      // the first would be a carousel showing two different months.
+      final cubit = await loadedFor(
+        DateTime(2026, 2, 15),
+        shifts: {'2026-03-10': ShiftType.notte, '2026-03-11': ShiftType.primo},
+      );
+
+      cubit.toggleShift(ShiftType.notte);
+
+      final next = cubit.state.grids!.last;
+      DayCell cellOn(int day) =>
+          next.firstWhere((cell) => cell.date == DateTime(2026, 3, day));
+      expect(cubit.state.muted(cellOn(10)), isFalse);
+      expect(cubit.state.muted(cellOn(11)), isTrue);
+    });
+
+    test('the Month Editor still opens on the whole month', () async {
+      // The Filter is a way of reading. The editor is for writing, and hiding
+      // a day you can write to would be a trap.
+      final cubit = await filterable();
+      final before = cubit.state.visibleMonthShifts;
+
+      cubit.toggleShift(ShiftType.notte);
+      cubit.toggleWeekday(DateTime.monday);
+
+      expect(cubit.state.visibleMonthShifts, before);
+    });
+
+    test('toggling a selection off gives the whole month back', () async {
+      final cubit = await filterable();
+
+      cubit.toggleShift(ShiftType.notte);
+      cubit.toggleWeekday(DateTime.monday);
+      cubit.toggleShift(ShiftType.notte);
+      cubit.toggleWeekday(DateTime.monday);
+
+      expect(cubit.state.shiftFilter, isEmpty);
+      expect(cubit.state.weekdayFilter, isEmpty);
+      expect(cubit.state.muted(cellOn(cubit, 4)), isFalse);
+    });
+
+    test('the Filter survives a load and a refresh', () async {
+      // Coming back from the Month Editor loads; resume and pull-to-refresh
+      // refresh. None of the three is a reason to forget what you selected.
+      final cubit = await filterable();
+      cubit.toggleShift(ShiftType.notte);
+      cubit.toggleWeekday(DateTime.monday);
+
+      await cubit.load();
+      await cubit.refresh();
+
+      expect(cubit.state.shiftFilter, {ShiftType.notte});
+      expect(cubit.state.weekdayFilter, {DateTime.monday});
+      expect(cubit.state.muted(cellOn(cubit, 3)), isTrue);
+    });
+  });
+
   group('sync triggers', () {
     /// A cubit whose "now" the test moves, standing in for time passing while
     /// the app sat in the background.
