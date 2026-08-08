@@ -121,17 +121,34 @@ class _CalendarPageState extends State<CalendarPage>
             style: Theme.of(context).textTheme.titleLarge,
           ),
         ),
-        _ShiftFilterRow(selected: state.shiftFilter),
-        Row(
-          children: [
-            for (var day = DateTime.monday; day <= DateTime.sunday; day++)
-              Expanded(
-                child: _WeekdayFilter(
-                  weekday: day,
-                  selected: state.weekdayFilter.contains(day),
+        _FilterPanel(
+          shiftFilter: state.shiftFilter,
+          weekdayFilter: state.weekdayFilter,
+        ),
+        // A heading and nothing more: seven letters centred over the columns
+        // they name. Nothing here is tappable — a control that looks exactly
+        // like a column heading is one nobody finds, which is why the Filter
+        // lives in the panel above.
+        Padding(
+          key: const Key('weekday-header'),
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              for (var day = DateTime.monday; day <= DateTime.sunday; day++)
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      // L M M G V S D, straight off the full names.
+                      weekdayNames[day][0],
+                      // The bare initial says nothing out loud, and it is the
+                      // only thing telling the two `M`s apart.
+                      semanticsLabel: weekdayNames[day],
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
         Expanded(
           child: Padding(
@@ -205,96 +222,125 @@ class _FirstLoadError extends StatelessWidget {
   }
 }
 
-/// The Shift Filter: the six Shift Codes, tapped on and off. A [Wrap] rather
-/// than a row of equal shares — six single letters fit one line on a phone,
-/// and falling to a second line beats overflowing. A scroll view would have
-/// been worse still: it would fight the pull-to-refresh for the same gesture.
-class _ShiftFilterRow extends StatelessWidget {
-  const _ShiftFilterRow({required this.selected});
+/// The Filter's controls, both groups in one disclosure. Shut on open and
+/// shut most of the time — what it says shut is the whole answer to "is a
+/// Filter on?", which is why the selection goes in the subtitle rather than
+/// behind the chevron.
+///
+/// Openness is not held anywhere: [ExpansionTile] keeps its own, and whether
+/// a disclosure is open is not something a read-only cubit over Shifts and
+/// the Filter should be able to answer. The panel sits outside the carousel,
+/// so paging between months leaves it as it was either way.
+class _FilterPanel extends StatelessWidget {
+  const _FilterPanel({required this.shiftFilter, required this.weekdayFilter});
 
-  final Set<ShiftType> selected;
+  final Set<ShiftType> shiftFilter;
+
+  final Set<int> weekdayFilter;
+
+  /// What is selected, each group in its display order and shifts before
+  /// weekdays regardless of what was tapped first. Empty when nothing is —
+  /// the tile then has no subtitle at all rather than an empty line.
+  ///
+  /// [spoken] takes the Italian names instead of the letters. The chips get
+  /// away with letters because a heading names their group and a fixed row
+  /// position separates the two `M`s; a subtitle has neither, so read aloud
+  /// it would be the one place a Shift Code says nothing.
+  String _summary({required bool spoken}) => [
+    for (final type in ShiftType.values)
+      if (shiftFilter.contains(type)) spoken ? type.label : type.code,
+    for (var day = DateTime.monday; day <= DateTime.sunday; day++)
+      if (weekdayFilter.contains(day))
+        spoken ? weekdayNames[day] : weekdayNames[day][0],
+  ].join(', ');
 
   @override
   Widget build(BuildContext context) {
-    final toggle = context.read<CalendarCubit>().toggleShift;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        spacing: 8,
-        runSpacing: 4,
-        children: [
-          for (final type in ShiftType.values)
-            FilterChip(
-              // The letter is drawn, the Italian name is spoken — the same
-              // trade the Month Editor's segments make.
-              label: Text(type.code, semanticsLabel: type.label),
-              selected: selected.contains(type),
-              // A tick beside a one-letter label doubles the chip's width and
-              // says nothing the fill has not already said.
-              showCheckmark: false,
-              onSelected: (_) => toggle(type),
+    final cubit = context.read<CalendarCubit>();
+    final summary = _summary(spoken: false);
+    return ExpansionTile(
+      title: const Text('Filtri'),
+      subtitle: summary.isEmpty
+          ? null
+          : Text(summary, semanticsLabel: _summary(spoken: true)),
+      // The chevron moves to the left so the trailing corner is free: a
+      // `trailing` widget would otherwise replace it. That is what lets
+      // Azzera be tapped without opening the panel, which is the point of
+      // having a clear-all at all.
+      controlAffinity: ListTileControlAffinity.leading,
+      trailing: summary.isEmpty
+          ? null
+          : TextButton(
+              onPressed: cubit.clearFilter,
+              child: const Text('Azzera'),
             ),
-        ],
-      ),
+      expandedCrossAxisAlignment: CrossAxisAlignment.start,
+      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      children: [
+        _FilterGroup(
+          heading: 'Turni',
+          children: [
+            for (final type in ShiftType.values)
+              FilterChip(
+                // The letter is drawn, the Italian name is spoken — the same
+                // trade the Month Editor's segments make.
+                label: Text(type.code, semanticsLabel: type.label),
+                selected: shiftFilter.contains(type),
+                // A tick beside a one-letter label doubles the chip's width
+                // and says nothing the fill has not already said.
+                showCheckmark: false,
+                onSelected: (_) => cubit.toggleShift(type),
+              ),
+          ],
+        ),
+        _FilterGroup(
+          heading: 'Giorni',
+          children: [
+            for (var day = DateTime.monday; day <= DateTime.sunday; day++)
+              FilterChip(
+                label: Text(
+                  weekdayNames[day][0],
+                  semanticsLabel: weekdayNames[day],
+                ),
+                selected: weekdayFilter.contains(day),
+                showCheckmark: false,
+                onSelected: (_) => cubit.toggleWeekday(day),
+              ),
+          ],
+        ),
+      ],
     );
   }
 }
 
-/// One column heading, which is also the Weekday Filter's control. Not a
-/// [FilterChip]: a chip's own padding would pull the letter off the centre of
-/// the column it labels, and labelling the column is what it is here for.
-class _WeekdayFilter extends StatelessWidget {
-  const _WeekdayFilter({required this.weekday, required this.selected});
+/// One of the Filter's two groups — the Shift Filter or the Weekday Filter —
+/// as a heading over its chips. The heading is what
+/// separates the two groups and what settles the one collision the shared
+/// chip idiom creates — `S` is Smonto under `Turni` and Sabato under
+/// `Giorni`, and the letter alone cannot say which.
+///
+/// A [Wrap] rather than a row of equal shares: the letters fit one line on a
+/// phone, and falling to a second line beats overflowing. A scroll view would
+/// be worse still — it would fight the pull-to-refresh for the same gesture.
+class _FilterGroup extends StatelessWidget {
+  /// The heading doubles as the key. The two groups draw the same chips from
+  /// the same idiom, so the heading is the only thing that tells them apart —
+  /// on screen, and for anything looking one of them up.
+  _FilterGroup({required this.heading, required this.children})
+    : super(key: Key(heading));
 
-  final int weekday;
+  final String heading;
 
-  final bool selected;
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    void toggle() => context.read<CalendarCubit>().toggleWeekday(weekday);
-    return Semantics(
-      // The bare initial says nothing out loud; the selected state is the
-      // other half of what a filter control has to announce.
-      label: weekdayNames[weekday],
-      button: true,
-      selected: selected,
-      // Excluding the InkWell's semantics takes its tap action with them, so
-      // the action is restated here — otherwise the control announces itself
-      // perfectly and then does nothing when a screen reader activates it.
-      onTap: toggle,
-      excludeSemantics: true,
-      child: InkWell(
-        onTap: toggle,
-        child: SizedBox(
-          // A tap target you can hit, on a row of text that is much shorter.
-          height: 48,
-          child: Center(
-            child: Container(
-              width: 32,
-              height: 32,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                // The chips' selected colour, not the primary that fills
-                // today's tile: one colour, one meaning.
-                color: selected ? theme.colorScheme.secondaryContainer : null,
-              ),
-              child: Text(
-                // L M M G V S D, straight off the full names.
-                weekdayNames[weekday][0],
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: selected
-                      ? theme.colorScheme.onSecondaryContainer
-                      : null,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(heading, style: Theme.of(context).textTheme.labelMedium),
+        Wrap(spacing: 8, runSpacing: 4, children: children),
+      ],
     );
   }
 }

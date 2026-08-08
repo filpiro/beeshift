@@ -380,6 +380,21 @@ void main() {
       expect(cubit.state.muted(cellOn(cubit, 4)), isFalse);
     });
 
+    test('clearing empties both groups at once', () async {
+      // Azzera. Thirteen toggles are their own undo, but only if you
+      // remember which thirteen you touched.
+      final cubit = await filterable();
+
+      cubit.toggleShift(ShiftType.notte);
+      cubit.toggleShift(ShiftType.primo);
+      cubit.toggleWeekday(DateTime.monday);
+      cubit.clearFilter();
+
+      expect(cubit.state.shiftFilter, isEmpty);
+      expect(cubit.state.weekdayFilter, isEmpty);
+      expect(cubit.state.muted(cellOn(cubit, 4)), isFalse);
+    });
+
     test('the Filter survives a load and a refresh', () async {
       // Coming back from the Month Editor loads; resume and pull-to-refresh
       // refresh. None of the three is a reason to forget what you selected.

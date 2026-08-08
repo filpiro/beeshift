@@ -57,4 +57,6 @@ The weekday control is a plain tappable letter inside a 48dp box, not a `FilterC
 
 Two-axis review of the diff. Both axes independently found the missing semantic tap action, fixed above. Also acted on: `filtering` was public with one caller and is now inlined; the filler-day test's stated reason was wrong and is rewritten; the widget tests' pump helper duplicated the existing one and now shares it; three gaps got tests — the second carousel page, the Month Editor being untouched by the Filter, and the chips' spoken names.
 
+**Superseded in part by [14](./14-filter-panel.md).** The behaviour here stands unchanged; the presentation does not. Folding the Weekday Filter into the weekday header saved a row and cost the control its affordance — the letters look like column headings because they are, and nothing said they could be tapped. 14 moves both groups into a collapsible `Filtri` panel and gives the header back.
+
 Raised and left alone: `shiftFilter` and `weekdayFilter` travel as a pair through the constructor, `copyWith` and `load`, which is a `Filter` value type wanting to be born. It would be a real refactor for a feature this size, and the pair only travels inside one class.
