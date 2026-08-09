@@ -110,6 +110,10 @@ class _CalendarPageState extends State<CalendarPage>
   ) {
     return Column(
       children: [
+        _FilterControls(
+          shiftFilter: state.shiftFilter,
+          weekdayFilter: state.weekdayFilter,
+        ),
         // Outside the carousel, and so is the month name: the weekday
         // initials are the same on both pages, so a header that slid with
         // the grid would tear in half — half moving, half not. The name
@@ -121,14 +125,10 @@ class _CalendarPageState extends State<CalendarPage>
             style: Theme.of(context).textTheme.titleLarge,
           ),
         ),
-        _FilterPanel(
-          shiftFilter: state.shiftFilter,
-          weekdayFilter: state.weekdayFilter,
-        ),
         // A heading and nothing more: seven letters centred over the columns
         // they name. Nothing here is tappable — a control that looks exactly
         // like a column heading is one nobody finds, which is why the Filter
-        // lives in the panel above.
+        // has its own chips above.
         Padding(
           key: const Key('weekday-header'),
           padding: const EdgeInsets.symmetric(vertical: 4),
@@ -222,102 +222,77 @@ class _FirstLoadError extends StatelessWidget {
   }
 }
 
-/// The Filter's controls, both groups in one disclosure. Shut on open and
-/// shut most of the time — what it says shut is the whole answer to "is a
-/// Filter on?", which is why the selection goes in the subtitle rather than
-/// behind the chevron.
+/// The Filter's controls, both groups always drawn. Nothing to expand: a
+/// disclosure is a promise of a control rather than a control, and the
+/// summary it needs to keep that promise says the selection a second time in
+/// letters that are one heading short of unambiguous.
 ///
-/// Openness is not held anywhere: [ExpansionTile] keeps its own, and whether
-/// a disclosure is open is not something a read-only cubit over Shifts and
-/// the Filter should be able to answer. The panel sits outside the carousel,
-/// so paging between months leaves it as it was either way.
-class _FilterPanel extends StatelessWidget {
-  const _FilterPanel({required this.shiftFilter, required this.weekdayFilter});
+/// The block sits above the month title and outside the carousel, so paging
+/// between months leaves the selection alone. Nothing here holds state — what
+/// is selected lives in [CalendarState] and nothing else needs remembering.
+class _FilterControls extends StatelessWidget {
+  const _FilterControls({
+    required this.shiftFilter,
+    required this.weekdayFilter,
+  });
 
   final Set<ShiftType> shiftFilter;
 
   final Set<int> weekdayFilter;
 
-  /// What is selected, each group in its display order and shifts before
-  /// weekdays regardless of what was tapped first. Empty when nothing is —
-  /// the tile then has no subtitle at all rather than an empty line.
-  ///
-  /// [spoken] takes the Italian names instead of the letters. The chips get
-  /// away with letters because a heading names their group and a fixed row
-  /// position separates the two `M`s; a subtitle has neither, so read aloud
-  /// it would be the one place a Shift Code says nothing.
-  String _summary({required bool spoken}) => [
-    for (final type in ShiftType.values)
-      if (shiftFilter.contains(type)) spoken ? type.label : type.code,
-    for (var day = DateTime.monday; day <= DateTime.sunday; day++)
-      if (weekdayFilter.contains(day))
-        spoken ? weekdayNames[day] : weekdayNames[day][0],
-  ].join(', ');
-
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<CalendarCubit>();
-    final summary = _summary(spoken: false);
-    return ExpansionTile(
-      title: const Text('Filtri'),
-      subtitle: summary.isEmpty
-          ? null
-          : Text(summary, semanticsLabel: _summary(spoken: true)),
-      // The chevron moves to the left so the trailing corner is free: a
-      // `trailing` widget would otherwise replace it. That is what lets
-      // Azzera be tapped without opening the panel, which is the point of
-      // having a clear-all at all.
-      controlAffinity: ListTileControlAffinity.leading,
-      trailing: summary.isEmpty
-          ? null
-          : TextButton(
-              onPressed: cubit.clearFilter,
-              child: const Text('Azzera'),
-            ),
-      expandedCrossAxisAlignment: CrossAxisAlignment.start,
-      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      children: [
-        _FilterGroup(
-          heading: 'Turni',
-          children: [
-            for (final type in ShiftType.values)
-              FilterChip(
-                // The letter is drawn, the Italian name is spoken — the same
-                // trade the Month Editor's segments make.
-                label: Text(type.code, semanticsLabel: type.label),
-                selected: shiftFilter.contains(type),
-                // A tick beside a one-letter label doubles the chip's width
-                // and says nothing the fill has not already said.
-                showCheckmark: false,
-                onSelected: (_) => cubit.toggleShift(type),
-              ),
-          ],
-        ),
-        _FilterGroup(
-          heading: 'Giorni',
-          children: [
-            for (var day = DateTime.monday; day <= DateTime.sunday; day++)
-              FilterChip(
-                label: Text(
-                  weekdayNames[day][0],
-                  semanticsLabel: weekdayNames[day],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _FilterGroup(
+            // The heading says what a tap does, not what the row contains:
+            // rows that are always on screen have to earn their space.
+            heading: 'Filtra per turno',
+            children: [
+              for (final type in ShiftType.values)
+                FilterChip(
+                  // The letter is drawn, the Italian name is spoken — the same
+                  // trade the Month Editor's segments make.
+                  label: Text(type.code, semanticsLabel: type.label),
+                  selected: shiftFilter.contains(type),
+                  // A tick beside a one-letter label doubles the chip's width
+                  // and says nothing the fill has not already said.
+                  showCheckmark: false,
+                  onSelected: (_) => cubit.toggleShift(type),
                 ),
-                selected: weekdayFilter.contains(day),
-                showCheckmark: false,
-                onSelected: (_) => cubit.toggleWeekday(day),
-              ),
-          ],
-        ),
-      ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          _FilterGroup(
+            heading: 'Filtra per giorno',
+            children: [
+              for (var day = DateTime.monday; day <= DateTime.sunday; day++)
+                FilterChip(
+                  label: Text(
+                    weekdayNames[day][0],
+                    semanticsLabel: weekdayNames[day],
+                  ),
+                  selected: weekdayFilter.contains(day),
+                  showCheckmark: false,
+                  onSelected: (_) => cubit.toggleWeekday(day),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
 
 /// One of the Filter's two groups — the Shift Filter or the Weekday Filter —
-/// as a heading over its chips. The heading is what
-/// separates the two groups and what settles the one collision the shared
-/// chip idiom creates — `S` is Smonto under `Turni` and Sabato under
-/// `Giorni`, and the letter alone cannot say which.
+/// as a heading over its chips. The heading is what separates the two groups
+/// and what settles the one collision the shared chip idiom creates — `S` is
+/// Smonto under `Filtra per turno` and Sabato under `Filtra per giorno`, and
+/// the letter alone cannot say which.
 ///
 /// A [Wrap] rather than a row of equal shares: the letters fit one line on a
 /// phone, and falling to a second line beats overflowing. A scroll view would

@@ -234,11 +234,6 @@ class CalendarCubit extends Cubit<CalendarState> {
     state.copyWith(weekdayFilter: _toggled(state.weekdayFilter, weekday)),
   );
 
-  /// Both groups at once — the panel's `Azzera`. Back to the empty pair the
-  /// Calendar starts with, which is the same thing as no Filter at all.
-  void clearFilter() =>
-      emit(state.copyWith(shiftFilter: const {}, weekdayFilter: const {}));
-
   static Set<T> _toggled<T>(Set<T> selection, T value) =>
       selection.contains(value)
       ? ({...selection}..remove(value))

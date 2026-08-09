@@ -173,9 +173,13 @@ void main() {
       },
     );
 
-    /// A chip inside one of the panel's two groups. Always scoped: the same
-    /// letter appears in both — `S` is Smonto under `Turni` and Sabato under
-    /// `Giorni` — so a bare label finds two chips that mean different things.
+    const shiftGroup = 'Filtra per turno';
+    const weekdayGroup = 'Filtra per giorno';
+
+    /// A chip inside one of the two groups. Always scoped: the same letter
+    /// appears in both — `S` is Smonto under `Filtra per turno` and Sabato
+    /// under `Filtra per giorno` — so a bare label finds two chips that mean
+    /// different things. The weekday header draws the same letters again.
     Finder chipIn(String group, String label) => find.descendant(
       of: find.byKey(Key(group)),
       matching: find.widgetWithText(FilterChip, label),
@@ -186,47 +190,51 @@ void main() {
       matching: find.byType(FilterChip),
     );
 
-    /// Opens the panel. Shut is the state the Calendar starts in, so every
-    /// test that touches a chip goes through here first.
-    Future<void> expand(WidgetTester tester) async {
-      await tester.tap(find.text('Filtri'));
-      await tester.pumpAndSettle();
-    }
-
-    testWidgets('starts shut, with the weekday header back to a heading', (
+    testWidgets('draws both groups on open, with nothing to expand', (
       tester,
     ) async {
       await pumpFiltered(tester);
 
-      expect(find.text('Filtri'), findsOne);
-      expect(find.byType(FilterChip), findsNothing, reason: 'still shut');
-      // One row of initials, and nothing to tap on it — the affordance the
-      // header never had is now the panel's.
-      expect(find.text('L'), findsOne);
+      expect(find.byType(ExpansionTile), findsNothing);
+      // The disclosure's chrome went with it: nothing names the block, and
+      // nothing says the selection a second time.
+      expect(find.text('Filtri'), findsNothing);
+      expect(find.text('Azzera'), findsNothing);
+      expect(find.text(shiftGroup), findsOne);
+      expect(find.text(weekdayGroup), findsOne);
+      expect(chipsIn(shiftGroup), findsNWidgets(ShiftType.values.length));
+      expect(chipsIn(weekdayGroup), findsNWidgets(DateTime.daysPerWeek));
+      // The collision the headings exist to settle.
+      expect(find.widgetWithText(FilterChip, 'S'), findsNWidgets(2));
+    });
+
+    testWidgets('the weekday header is still a heading and nothing more', (
+      tester,
+    ) async {
+      await pumpFiltered(tester);
+
+      final headerL = find.descendant(
+        of: find.byKey(const Key('weekday-header')),
+        matching: find.text('L'),
+      );
+      expect(headerL, findsOne);
       expect(
-        find.ancestor(of: find.text('L'), matching: find.byType(InkWell)),
+        find.ancestor(of: headerL, matching: find.byType(InkWell)),
         findsNothing,
       );
     });
 
-    testWidgets('opens into two labelled groups between the title and the '
-        'grid', (tester) async {
+    testWidgets('the groups sit above the title, which sits above the grid', (
+      tester,
+    ) async {
       await pumpFiltered(tester);
-      await expand(tester);
-
-      expect(find.text('Turni'), findsOne);
-      expect(find.text('Giorni'), findsOne);
-      expect(chipsIn('Turni'), findsNWidgets(ShiftType.values.length));
-      expect(chipsIn('Giorni'), findsNWidgets(DateTime.daysPerWeek));
-      // The collision the headings exist to settle.
-      expect(find.widgetWithText(FilterChip, 'S'), findsNWidgets(2));
 
       expect(
-        tester.getRect(find.text('Filtri')).top,
-        greaterThan(tester.getRect(find.text('Febbraio 2026')).top),
+        tester.getRect(find.byKey(const Key(weekdayGroup))).bottom,
+        lessThan(tester.getRect(find.text('Febbraio 2026')).top),
       );
       expect(
-        tester.getRect(find.byKey(const Key('Giorni'))).bottom,
+        tester.getRect(find.text('Febbraio 2026')).bottom,
         lessThan(tester.getRect(find.byKey(const Key('weekday-header'))).top),
       );
     });
@@ -235,10 +243,9 @@ void main() {
       tester,
     ) async {
       await pumpFiltered(tester);
-      await expand(tester);
       expect(opacityOf(tester, '4'), 1, reason: 'nothing selected yet');
 
-      await tester.tap(chipIn('Turni', ShiftType.notte.code));
+      await tester.tap(chipIn(shiftGroup, ShiftType.notte.code));
       await tester.pumpAndSettle();
 
       expect(opacityOf(tester, '2'), 1, reason: 'an N');
@@ -250,10 +257,9 @@ void main() {
 
     testWidgets('tapping a weekday narrows it further', (tester) async {
       await pumpFiltered(tester);
-      await expand(tester);
 
-      await tester.tap(chipIn('Turni', ShiftType.notte.code));
-      await tester.tap(chipIn('Giorni', 'L'));
+      await tester.tap(chipIn(shiftGroup, ShiftType.notte.code));
+      await tester.tap(chipIn(weekdayGroup, 'L'));
       await tester.pumpAndSettle();
 
       expect(opacityOf(tester, '2'), 1, reason: 'a Monday N');
@@ -264,113 +270,61 @@ void main() {
       tester,
     ) async {
       await pumpFiltered(tester);
-      await expand(tester);
 
-      await tester.tap(chipIn('Turni', ShiftType.notte.code));
+      await tester.tap(chipIn(shiftGroup, ShiftType.notte.code));
       await tester.pumpAndSettle();
-      await tester.tap(chipIn('Turni', ShiftType.notte.code));
+      await tester.tap(chipIn(shiftGroup, ShiftType.notte.code));
       await tester.pumpAndSettle();
 
       expect(opacityOf(tester, '4'), 1);
       expect(opacityOf(tester, '15'), 1);
     });
 
-    /// The panel shut is the state the Calendar spends its life in, so what
-    /// it says shut is the answer to "is a Filter on?".
-    testWidgets('lists what is selected, shifts first, and nothing when '
-        'nothing is', (tester) async {
-      ExpansionTile tile() =>
-          tester.widget<ExpansionTile>(find.byType(ExpansionTile));
-
+    testWidgets('the selection survives a swipe', (tester) async {
+      // The controls sit outside the carousel, so paging is not a reason to
+      // forget what was chosen.
       await pumpFiltered(tester);
-      expect(tile().subtitle, isNull, reason: 'nothing selected');
-
-      await expand(tester);
-      await tester.tap(chipIn('Giorni', 'L'));
-      await tester.tap(chipIn('Turni', ShiftType.notte.code));
-      await tester.pumpAndSettle();
-
-      // Tapped weekday first, and it still reads shift first.
-      expect(find.text('N, L'), findsOne);
-    });
-
-    testWidgets('Azzera appears only when something is selected, and clears '
-        'both groups without opening the panel', (tester) async {
-      await pumpFiltered(tester);
-      expect(find.text('Azzera'), findsNothing);
-
-      await expand(tester);
-      await tester.tap(chipIn('Turni', ShiftType.notte.code));
-      await tester.tap(chipIn('Giorni', 'L'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Filtri'));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(FilterChip), findsNothing, reason: 'shut again');
-      expect(find.text('Azzera'), findsOne);
-      expect(opacityOf(tester, '4'), 0.35);
-
-      await tester.tap(find.text('Azzera'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Azzera'), findsNothing);
-      expect(
-        tester.widget<ExpansionTile>(find.byType(ExpansionTile)).subtitle,
-        isNull,
-      );
-      expect(opacityOf(tester, '4'), 1);
-      expect(opacityOf(tester, '2'), 1);
-    });
-
-    testWidgets('stays open, and stays selected, across a swipe', (
-      tester,
-    ) async {
-      // The panel sits outside the carousel, so paging is not a reason to
-      // shut it or to forget what was chosen.
-      await pumpFiltered(tester);
-      await expand(tester);
-      await tester.tap(chipIn('Turni', ShiftType.notte.code));
+      await tester.tap(chipIn(shiftGroup, ShiftType.notte.code));
       await tester.pumpAndSettle();
 
       await tester.fling(find.byType(PageView), const Offset(-400, 0), 1000);
       await tester.pumpAndSettle();
 
       expect(find.text('Marzo 2026'), findsOne, reason: 'page two is up');
-      expect(chipsIn('Turni'), findsNWidgets(ShiftType.values.length));
       expect(
-        tester.widget<FilterChip>(chipIn('Turni', ShiftType.notte.code))
+        tester
+            .widget<FilterChip>(chipIn(shiftGroup, ShiftType.notte.code))
             .selected,
         isTrue,
       );
     });
 
-    testWidgets('expanding pushes the grid down and never overflows it', (
+    testWidgets('the grid still fits under the controls on a short screen', (
       tester,
     ) async {
-      // A six-row month on a short screen with the panel open — the worst
-      // case for the space the grid has left.
+      // A six-row month on a short screen with four permanent rows of chrome
+      // above it — the worst case for the space the grid has left.
       await pumpAt(tester, DateTime(2026, 8, 15), size: const Size(360, 420));
-      await expand(tester);
 
       expect(tester.takeException(), isNull);
+      expect(find.text('31'), findsWidgets, reason: 'the last day is drawn');
     });
 
     testWidgets('every chip speaks its Italian name, its state, and can be '
         'activated', (tester) async {
       final handle = tester.ensureSemantics();
       await pumpFiltered(tester);
-      await expand(tester);
 
       // The letters are drawn; the names are what is spoken — which is also
       // what tells the two `M`s apart.
       final monday = find.descendant(
-        of: find.byKey(const Key('Giorni')),
+        of: find.byKey(const Key(weekdayGroup)),
         matching: find.bySemanticsLabel('Lunedì'),
       );
       expect(monday, findsOne);
       expect(
         find.descendant(
-          of: find.byKey(const Key('Turni')),
+          of: find.byKey(const Key(shiftGroup)),
           matching: find.bySemanticsLabel(ShiftType.notte.label),
         ),
         findsOne,
@@ -380,7 +334,7 @@ void main() {
       for (final name in ['Martedì', 'Mercoledì']) {
         expect(
           find.descendant(
-            of: find.byKey(const Key('Giorni')),
+            of: find.byKey(const Key(weekdayGroup)),
             matching: find.bySemanticsLabel(name),
           ),
           findsOne,
@@ -396,18 +350,19 @@ void main() {
         ),
       );
 
-      await tester.tap(chipIn('Giorni', 'L'));
-      await tester.tap(chipIn('Turni', ShiftType.notte.code));
+      final notte = find.descendant(
+        of: find.byKey(const Key(shiftGroup)),
+        matching: find.bySemanticsLabel(ShiftType.notte.label),
+      );
+      await tester.tap(chipIn(weekdayGroup, 'L'));
+      await tester.tap(chipIn(shiftGroup, ShiftType.notte.code));
       await tester.pumpAndSettle();
 
       expect(tester.getSemantics(monday), containsSemantics(isSelected: true));
-      // The subtitle draws the letters, but a bare `N, L` read aloud is the
-      // one place a Shift Code has no heading and no row position to be
-      // read by — so it is spoken in full.
-      expect(find.text('N, L'), findsOne);
-      // Matched rather than equalled: the tile merges its title into the same
-      // node, so the label it speaks is `Filtri` and then this.
-      expect(find.bySemanticsLabel(RegExp('Notte, Lunedì')), findsOne);
+      expect(tester.getSemantics(notte), containsSemantics(isSelected: true));
+      // The chips are the whole account of what is selected — no line
+      // anywhere restates it in letters.
+      expect(find.text('N, L'), findsNothing);
       handle.dispose();
     });
   });
