@@ -343,7 +343,7 @@ void main() {
       }
       expect(
         tester.getSemantics(monday),
-        containsSemantics(
+        isSemantics(
           isButton: true,
           isSelected: false,
           hasTapAction: true,
@@ -358,8 +358,8 @@ void main() {
       await tester.tap(chipIn(shiftGroup, ShiftType.notte.code));
       await tester.pumpAndSettle();
 
-      expect(tester.getSemantics(monday), containsSemantics(isSelected: true));
-      expect(tester.getSemantics(notte), containsSemantics(isSelected: true));
+      expect(tester.getSemantics(monday), isSemantics(isSelected: true));
+      expect(tester.getSemantics(notte), isSemantics(isSelected: true));
       // The chips are the whole account of what is selected — no line
       // anywhere restates it in letters.
       expect(find.text('N, L'), findsNothing);

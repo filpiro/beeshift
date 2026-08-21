@@ -17,6 +17,7 @@ pws -c dart pub get
 
 **Do not** run Flutter/Dart commands directly from WSL.
 
+This repo use custom env, alwayse use `--dart-define-from-file=env.json`
 
 # Rules
 

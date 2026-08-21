@@ -244,7 +244,7 @@ class _FilterControls extends StatelessWidget {
   Widget build(BuildContext context) {
     final cubit = context.read<CalendarCubit>();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
