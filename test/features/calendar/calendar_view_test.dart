@@ -1,11 +1,11 @@
-import 'package:beeshift/calendar_cubit.dart';
-import 'package:beeshift/calendar_page.dart';
-import 'package:beeshift/shift_type.dart';
+import 'package:beeshift/features/calendar/calendar_view.dart';
+import 'package:beeshift/features/calendar/cubit/calendar_cubit.dart';
+import 'package:beeshift/shared/shift_type.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'fake_shifts_repository.dart';
+import '../../data/fake_shifts_repository.dart';
 
 /// Only what the widget alone can prove: that the two triggers are wired to
 /// the Calendar's refresh. What refresh then does is asserted on the cubit.

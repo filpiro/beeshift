@@ -1,7 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'shift_type.dart';
-import 'shifts_repository.dart';
+import '../../../data/shifts_repository.dart';
+import '../../../shared/shift_type.dart';
 
 /// One day in the grid. Filler days belong to an adjacent month and are drawn
 /// dimmed; they carry real data like any other day, because Shifts are never

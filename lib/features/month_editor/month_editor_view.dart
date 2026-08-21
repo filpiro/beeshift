@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'italian_dates.dart';
-import 'month_editor_cubit.dart';
-import 'shift_type.dart';
-import 'shifts_repository.dart';
+import '../../data/shifts_repository.dart';
+import '../../shared/italian_dates.dart';
+import '../../shared/shift_type.dart';
+import 'cubit/month_editor_cubit.dart';
 
 /// One month, every day of it, six Shift Types each. One Save commits the lot.
 class MonthEditorPage extends StatelessWidget {

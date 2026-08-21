@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:beeshift/shift_type.dart';
-import 'package:beeshift/shifts_repository.dart';
+import 'package:beeshift/data/shifts_repository.dart';
+import 'package:beeshift/shared/shift_type.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:libsql_dart/libsql_dart.dart';
 

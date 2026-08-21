@@ -1,6 +1,6 @@
 import 'package:libsql_dart/libsql_dart.dart';
 
-import 'shift_type.dart';
+import '../shared/shift_type.dart';
 
 /// A date as the database stores it: ISO `YYYY-MM-DD`. See ADR-0003.
 String isoDate(DateTime date) => date.toIso8601String().substring(0, 10);

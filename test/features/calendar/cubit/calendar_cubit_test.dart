@@ -1,8 +1,8 @@
-import 'package:beeshift/calendar_cubit.dart';
-import 'package:beeshift/shift_type.dart';
+import 'package:beeshift/features/calendar/cubit/calendar_cubit.dart';
+import 'package:beeshift/shared/shift_type.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'fake_shifts_repository.dart';
+import '../../../data/fake_shifts_repository.dart';
 
 /// The primary seam: the grid lives in the Calendar's state, so every shape
 /// assertion here runs without building a widget. "Now" is injected, never

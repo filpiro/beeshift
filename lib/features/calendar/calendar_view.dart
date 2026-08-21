@@ -3,12 +3,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'calendar_cubit.dart';
-import 'italian_dates.dart';
-import 'month_editor_cubit.dart';
-import 'month_editor_page.dart';
-import 'shift_type.dart';
-import 'shifts_repository.dart';
+import '../../data/shifts_repository.dart';
+import '../../shared/italian_dates.dart';
+import '../../shared/shift_type.dart';
+import '../month_editor/cubit/month_editor_cubit.dart';
+import '../month_editor/month_editor_view.dart';
+import 'cubit/calendar_cubit.dart';
 
 /// Height kept clear under the grid: a 56dp floating button, the Scaffold's
 /// 16dp margin below it, and 8dp so the last row is not touching it.

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'calendar_cubit.dart';
-import 'calendar_page.dart';
-import 'shifts_repository.dart';
+import 'data/shifts_repository.dart';
+import 'features/calendar/calendar_view.dart';
+import 'features/calendar/cubit/calendar_cubit.dart';
 
 // Supplied at build time: flutter run --dart-define-from-file=env.json
 const _syncUrl = String.fromEnvironment('TURSO_DATABASE_URL');

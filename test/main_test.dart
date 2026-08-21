@@ -1,9 +1,9 @@
 import 'package:beeshift/main.dart';
-import 'package:beeshift/shift_type.dart';
+import 'package:beeshift/shared/shift_type.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'fake_shifts_repository.dart';
+import 'data/fake_shifts_repository.dart';
 
 /// The one failure with no graceful degradation: without the database there is
 /// no app, so it takes the whole screen and offers the only action that helps.
