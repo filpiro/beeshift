@@ -56,8 +56,24 @@ The default screen. A read-only month view of the Data Window, one page per mont
 _Avoid_: home, month view
 
 **Month Editor**:
-The screen for recording Shifts, reached from the Calendar. It edits whichever month the Calendar is showing, pre-loaded with that month's existing Shifts, and commits every change in one batch. The only place in the app that writes.
+The screen for recording Shifts, reached from the Calendar. It edits whichever month the Calendar is showing, pre-loaded with that month's existing Shifts, and commits every change in one batch. The only place in the app that writes. It covers everything while it is open, and leaving it discards whatever was not saved.
 _Avoid_: Insert Shifts, bulk insert, insert screen
+
+**Settings**:
+A screen holding the app's preferences. Reached from the Shell, alongside the Calendar rather than on top of it. Nothing on it concerns Shifts, so it works whether or not the schedule can be read.
+_Avoid_: preferences screen, options, config
+
+**Shell**:
+What holds the app's screens once the database is open: whichever destination is showing, with the Bottom Bar over it. There are two destinations — the Calendar and Settings — and switching between them leaves both exactly as they were. The Month Editor is not a destination: it is opened over the Shell and hides it.
+_Avoid_: home, navigator, tabs, container
+
+**Bottom Bar**:
+The Shell's one navigation control. Two buttons: one that goes to Settings, one that opens the Month Editor. The first is a destination and is drawn active while Settings is showing; the second is an action and is never active. It is drawn over the Calendar, which is why the Calendar keeps a strip clear at the bottom.
+_Avoid_: navbar, tab bar, toolbar, dock
+
+**Theme Mode**:
+Which of the app's two appearances is drawn — light, dark, or whichever the phone is set to. The only preference in Settings, and the only theme axis the worker controls; the accent colour is fixed. It belongs to the device, not to the worker: choosing dark on one phone leaves the other alone.
+_Avoid_: dark mode (as a boolean), skin, palette, flavor
 
 ### Scope
 
