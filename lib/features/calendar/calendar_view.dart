@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../shared/italian_dates.dart';
+import '../../shared/shift_colors.dart';
 import '../../shared/shift_type.dart';
 import '../../shared/widgets/floating_bottom_bar.dart';
 import 'cubit/calendar_cubit.dart';
@@ -354,54 +355,77 @@ class _DayCellView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Today is filled only on the page that owns the day. It also appears as
+    final shift = cell.shift;
+    // A day with no Shift has no Shift Colour, so the accent stands in.
+    final shiftColor = shift == null
+        ? theme.colorScheme.primary
+        : ShiftColors.of(context)[shift];
+    // Today is marked only on the page that owns the day. It also appears as
     // filler on the next month's page whenever it is the last day of a month,
-    // and a dimmed tile carrying a loud fill is neither one thing nor the
+    // and a dimmed tile carrying a loud mark is neither one thing nor the
     // other — so the page that merely borrows the day draws it plainly.
     final highlighted = cell.isToday && !cell.isFiller;
-    final foreground = highlighted ? theme.colorScheme.onPrimary : null;
     return Opacity(
       // One opacity for both reasons, so a muted filler day is not dimmed
-      // twice. Today's fill dims with everything else: an exception for it
+      // twice. Today's mark dims with everything else: an exception for it
       // would read as "today matched".
       opacity: cell.isFiller || muted ? 0.35 : 1,
       child: Padding(
         padding: const EdgeInsets.all(2),
         child: DecoratedBox(
           decoration: ShapeDecoration(
-            color: highlighted ? theme.colorScheme.primary : null,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppTokens.radius),
-              // The fill says everything today's tile needs to say; an outline
-              // on top of it would only muddy the edge.
+              // Today keeps its own Shift Colour on the edge rather than a
+              // slab of accent across the face: the Shift Code inside stays
+              // the thing you read, and the border is only how you find it.
               side: highlighted
-                  ? BorderSide.none
+                  ? BorderSide(color: shiftColor, width: 2)
                   : BorderSide(color: theme.colorScheme.outlineVariant),
             ),
           ),
-          child: Center(
-            // Tiles get small on a short screen. Scaling down beats clipping,
-            // and beats a layout that only works above some secret width.
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
+          // Tiles get small on a short screen. Scaling each text down beats
+          // clipping, and beats a layout that only works above some width.
+          child: Stack(
+            children: [
+              // The day number is how you find the right tile, not what you
+              // read off it — so it stays small and gets out of the corner
+              // the Shift Code wants.
+              Positioned(
+                top: 2,
+                right: 4,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
                     '${cell.date.day}',
                     style: theme.textTheme.labelMedium?.copyWith(
-                      color: foreground,
+                      fontWeight: highlighted ? FontWeight.bold : null,
                     ),
                   ),
-                  Text(
-                    cell.shift?.code ?? '',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: foreground,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
+              if (shift != null)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        shift.code,
+                        // The letter is drawn and the colour carries it; the
+                        // Italian name is what is spoken — colour says
+                        // nothing out loud, and neither does a bare `N`.
+                        semanticsLabel: shift.label,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          color: shiftColor,
+                          fontWeight: highlighted ? FontWeight.bold : null,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),

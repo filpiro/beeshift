@@ -2,6 +2,7 @@ import 'package:beeshift/features/calendar/cubit/calendar_cubit.dart';
 import 'package:beeshift/features/settings/cubit/theme_cubit.dart';
 import 'package:beeshift/features/shell/shell_view.dart';
 import 'package:beeshift/shared/shift_type.dart';
+import 'package:beeshift/shared/theme.dart';
 import 'package:beeshift/shared/widgets/equal_row_segmented.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -26,11 +27,13 @@ void main() {
     await calendar.load();
     await tester.pumpWidget(
       MaterialApp(
+        theme: lightTheme,
         home: MultiBlocProvider(
           providers: [
             BlocProvider<CalendarCubit>.value(value: calendar),
             BlocProvider<ThemeCubit>(
-              create: (_) => ThemeCubit(read: () async => null, write: (_) async {}),
+              create: (_) =>
+                  ThemeCubit(read: () async => null, write: (_) async {}),
             ),
           ],
           child: ShellPage(repository: repository),

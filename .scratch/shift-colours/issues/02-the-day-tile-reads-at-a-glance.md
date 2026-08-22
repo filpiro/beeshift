@@ -10,15 +10,15 @@ Everything the tile already gets right is frozen: today is still marked only on 
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The Shift Code is drawn on the left of the tile, larger than before, in its Shift Colour
-- [ ] The day number sits in the top-right corner at the size it already has
-- [ ] Today draws a two-pixel border in its own Shift Colour and no fill
-- [ ] Today with no Shift entered falls back to an accent border, and still shows no letter
-- [ ] Today's day number and Shift Code are bold; no other day is bold
-- [ ] Today is still marked only on the page that owns the day, never as a filler day
-- [ ] Filler and muted days keep the same single 0.35 dimming and are never dimmed twice
-- [ ] A six-row month on a short screen still fits above the Bottom Bar with nothing overflowing
-- [ ] A widget test covers today with a Shift, today without one, a plain day and a muted day
-- [ ] Analyze is clean and the whole suite passes with no behavioural assertion rewritten
+- [x] The Shift Code is drawn on the left of the tile, larger than before, in its Shift Colour
+- [x] The day number sits in the top-right corner at the size it already has
+- [x] Today draws a two-pixel border in its own Shift Colour and no fill
+- [x] Today with no Shift entered falls back to an accent border, and still shows no letter
+- [x] Today's day number and Shift Code are bold; no other day is bold
+- [x] Today is still marked only on the page that owns the day, never as a filler day
+- [x] Filler and muted days keep the same single 0.35 dimming and are never dimmed twice
+- [x] A six-row month on a short screen still fits above the Bottom Bar with nothing overflowing
+- [x] A widget test covers today with a Shift, today without one, a plain day and a muted day
+- [x] Analyze is clean and the whole suite passes with no behavioural assertion rewritten

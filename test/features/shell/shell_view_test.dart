@@ -3,6 +3,7 @@ import 'package:beeshift/features/month_editor/month_editor_view.dart';
 import 'package:beeshift/features/settings/cubit/theme_cubit.dart';
 import 'package:beeshift/features/shell/shell_view.dart';
 import 'package:beeshift/shared/shift_type.dart';
+import 'package:beeshift/shared/theme.dart';
 import 'package:beeshift/shared/widgets/floating_bottom_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -31,6 +32,7 @@ void main() {
     await cubit.load();
     await tester.pumpWidget(
       MaterialApp(
+        theme: lightTheme,
         home: Builder(
           // A gesture bar or a home indicator, faked onto the real
           // MediaQuery rather than over it: replacing it wholesale would
@@ -79,9 +81,11 @@ void main() {
     }
 
     // Left to right: the two destinations flank the one action.
-    final order = ['Calendario', 'Modifica', 'Impostazioni']
-        .map((l) => tester.getCenter(find.byKey(Key(l))).dx)
-        .toList();
+    final order = [
+      'Calendario',
+      'Modifica',
+      'Impostazioni',
+    ].map((l) => tester.getCenter(find.byKey(Key(l))).dx).toList();
     expect(order[0], lessThan(order[1]));
     expect(order[1], lessThan(order[2]));
 
@@ -225,6 +229,7 @@ void main() {
     final cubit = CalendarCubit(repository, clock: () => DateTime(2026, 2, 15));
     await tester.pumpWidget(
       MaterialApp(
+        theme: lightTheme,
         home: MultiBlocProvider(
           providers: [
             BlocProvider<CalendarCubit>.value(value: cubit),
