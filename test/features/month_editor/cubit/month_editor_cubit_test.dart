@@ -1,8 +1,8 @@
-import 'package:beeshift/month_editor_cubit.dart';
-import 'package:beeshift/shift_type.dart';
+import 'package:beeshift/features/month_editor/cubit/month_editor_cubit.dart';
+import 'package:beeshift/shared/shift_type.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'fake_shifts_repository.dart';
+import '../../../data/fake_shifts_repository.dart';
 
 /// The write path's seam: what the editor holds and what it sends is decided
 /// here, so the batch payload can be asserted without touching a widget.

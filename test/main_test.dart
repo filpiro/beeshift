@@ -1,14 +1,35 @@
+import 'dart:async';
+
+import 'package:beeshift/data/shifts_repository.dart';
 import 'package:beeshift/main.dart';
-import 'package:beeshift/shift_type.dart';
+import 'package:beeshift/shared/shift_type.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'fake_shifts_repository.dart';
+import 'data/fake_shifts_repository.dart';
 
 /// The one failure with no graceful degradation: without the database there is
 /// no app, so it takes the whole screen and offers the only action that helps.
 void main() {
+  // MainApp builds a real ThemeCubit, which reads SharedPreferences on
+  // construction — these tests never care about theme, but the channel
+  // still needs a mock backing it.
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   _firstLaunch();
+
+  testWidgets('no bar over the opening spinner', (tester) async {
+    // Never completes: the point is what is on screen before it does.
+    await tester.pumpWidget(
+      MainApp(open: () => Completer<ShiftsRepository>().future),
+    );
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOne);
+    expect(find.byTooltip('Modifica'), findsNothing);
+    expect(find.byTooltip('Impostazioni'), findsNothing);
+  });
 
   testWidgets('a failed connect fills the screen, and Retry re-opens', (
     tester,
@@ -31,7 +52,7 @@ void main() {
 
     expect(find.text('Impossibile aprire il database.'), findsOne);
     expect(
-      find.byType(FloatingActionButton),
+      find.byTooltip('Modifica'),
       findsNothing,
       reason: 'nothing to edit behind a database that would not open',
     );
@@ -42,7 +63,7 @@ void main() {
     // A second attempt was actually made, and the app is now the Calendar.
     expect(attempts, 2);
     expect(find.text('Impossibile aprire il database.'), findsNothing);
-    expect(find.byType(FloatingActionButton), findsOne);
+    expect(find.byTooltip('Modifica'), findsOne);
   });
 
   testWidgets('Retry that fails again returns to the same error', (

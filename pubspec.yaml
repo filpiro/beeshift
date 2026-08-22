@@ -9,9 +9,14 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  catui:
+    git:
+      url: https://github.com/filpiro/catui
+      ref: main
   flutter_bloc: ^9.1.1
   libsql_dart: ^0.9.0+0.9.30
   path_provider: ^2.1.6
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:

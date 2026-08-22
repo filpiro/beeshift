@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'italian_dates.dart';
-import 'month_editor_cubit.dart';
-import 'shift_type.dart';
-import 'shifts_repository.dart';
+import '../../data/shifts_repository.dart';
+import '../../shared/italian_dates.dart';
+import '../../shared/shift_colors.dart';
+import '../../shared/shift_type.dart';
+import '../../shared/widgets/equal_row_segmented.dart';
+import 'cubit/month_editor_cubit.dart';
 
 /// One month, every day of it, six Shift Types each. One Save commits the lot.
 class MonthEditorPage extends StatelessWidget {
@@ -77,47 +79,40 @@ class _DayRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final editor = context.read<MonthEditorCubit>();
+    final colors = ShiftColors.of(context);
     return Padding(
       // No divider closing the row: once the rows breathe, a line between two
       // outlined controls is ink competing with the outlines.
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             '${day.day} ${weekdayNames[day.weekday]}',
-            style: Theme.of(context).textTheme.titleMedium,
+            style: Theme.of(context).textTheme.titleLarge,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           // Codes, not names — six Italian names cannot share one row on a
           // phone, and the codes are what the user reads off the real rota.
           // The names stay as what a screen reader says.
-          SegmentedButton<ShiftType>(
-            // An Empty day means "not entered yet", so nothing selected has to
-            // be drawable. Returning to it is blocked below, not here.
-            emptySelectionAllowed: true,
-            // The check would take the space the letter needs.
-            showSelectedIcon: false,
-            style: SegmentedButton.styleFrom(
-              // Six segments at a sixth of a phone's width: the default
-              // padding is wider than a single letter can pay for.
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              minimumSize: const Size(0, 48),
-            ),
+          EqualRowSegmented<ShiftType>(
             segments: [
               for (final shift in ShiftType.values)
-                ButtonSegment(
+                RowSegment(
                   value: shift,
-                  label: Text(shift.code, semanticsLabel: shift.label),
+                  code: shift.code,
+                  // Picked turns the Shift Colour, so the editor and the
+                  // Calendar's tiles say the same thing in the same hue.
+                  color: colors[shift],
+                  label: shift.label,
                 ),
             ],
-            selected: {?selected},
-            // Tapping the selected segment would otherwise empty the set, and
-            // nothing may put a day back to "not entered yet". A wrong choice
-            // is corrected by picking a different Shift Type.
-            onSelectionChanged: (chosen) {
-              if (chosen.isNotEmpty) editor.select(day, chosen.single);
-            },
+            selected: selected,
+            // Every tap, selected code included, sets the day to that Shift
+            // Type — there is no toggle-off, so nothing may put a day back to
+            // "not entered yet". A wrong choice is corrected by picking a
+            // different one.
+            onChanged: (shift) => editor.select(day, shift),
           ),
         ],
       ),

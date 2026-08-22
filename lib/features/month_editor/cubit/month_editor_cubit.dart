@@ -1,7 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'shift_type.dart';
-import 'shifts_repository.dart';
+import '../../../data/shifts_repository.dart';
+import '../../../shared/shift_type.dart';
 
 /// The Month Editor's state: what is chosen, and whether the last attempt to
 /// commit it failed.

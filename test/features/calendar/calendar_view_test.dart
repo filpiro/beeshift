@@ -1,11 +1,13 @@
-import 'package:beeshift/calendar_cubit.dart';
-import 'package:beeshift/calendar_page.dart';
-import 'package:beeshift/shift_type.dart';
+import 'package:beeshift/features/calendar/calendar_view.dart';
+import 'package:beeshift/features/calendar/cubit/calendar_cubit.dart';
+import 'package:beeshift/shared/shift_colors.dart';
+import 'package:beeshift/shared/shift_type.dart';
+import 'package:beeshift/shared/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'fake_shifts_repository.dart';
+import '../../data/fake_shifts_repository.dart';
 
 /// Only what the widget alone can prove: that the two triggers are wired to
 /// the Calendar's refresh. What refresh then does is asserted on the cubit.
@@ -18,10 +20,8 @@ void main() {
     await cubit.load();
     await tester.pumpWidget(
       MaterialApp(
-        home: BlocProvider.value(
-          value: cubit,
-          child: CalendarPage(repository: repository),
-        ),
+        theme: lightTheme,
+        home: BlocProvider.value(value: cubit, child: const CalendarPage()),
       ),
     );
     repository.calls.clear();
@@ -73,27 +73,29 @@ void main() {
     await cubit.load();
     await tester.pumpWidget(
       MaterialApp(
-        home: BlocProvider.value(
-          value: cubit,
-          child: CalendarPage(repository: repository),
-        ),
+        theme: lightTheme,
+        home: BlocProvider.value(value: cubit, child: const CalendarPage()),
       ),
     );
   }
 
   group('the tile grid', () {
-    /// A tile filled with the primary colour — the one and only highlight.
-    Finder filledTiles(WidgetTester tester) {
-      final scheme = Theme.of(
-        tester.element(find.byType(CalendarPage)),
-      ).colorScheme;
-      return find.byWidgetPredicate(
-        (widget) =>
-            widget is DecoratedBox &&
-            widget.decoration is ShapeDecoration &&
-            (widget.decoration as ShapeDecoration).color == scheme.primary,
-      );
+    /// The side a tile's border is drawn with, or null if it is not a tile.
+    BorderSide? sideOf(Widget widget) {
+      if (widget is! DecoratedBox) return null;
+      final decoration = widget.decoration;
+      if (decoration is! ShapeDecoration) return null;
+      final shape = decoration.shape;
+      return shape is RoundedRectangleBorder ? shape.side : null;
     }
+
+    /// Today's tile: every border is a hairline now, so the mark is the
+    /// colour — every other tile keeps the ordinary outline. No tile is
+    /// filled at all any more.
+    Finder markedTiles() => find.byWidgetPredicate((widget) {
+      final side = sideOf(widget);
+      return side != null && side.color != lightTheme.colorScheme.outlineVariant;
+    });
 
     testWidgets('names the visible month, and renames it on a swipe', (
       tester,
@@ -109,17 +111,118 @@ void main() {
       expect(find.text('Febbraio 2026'), findsNothing);
     });
 
-    testWidgets('exactly one tile is filled, and it is today', (tester) async {
+    testWidgets('exactly one tile is marked, and it is today', (tester) async {
       await pumpAt(tester, DateTime(2026, 2, 15));
 
-      expect(filledTiles(tester), findsOne);
+      expect(markedTiles(), findsOne);
       expect(
-        find.descendant(of: filledTiles(tester), matching: find.text('15')),
+        find.descendant(of: markedTiles(), matching: find.text('15')),
         findsOne,
+      );
+      // Nothing is filled any more — the border carries the whole mark.
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is DecoratedBox &&
+              widget.decoration is ShapeDecoration &&
+              (widget.decoration as ShapeDecoration).color != null,
+        ),
+        findsNothing,
       );
     });
 
-    testWidgets('today is never filled on the page it is filler on', (
+    /// The style some text is drawn with inside a given day's tile — the day
+    /// number itself, or the Shift Code beside it.
+    TextStyle? styleOf(WidgetTester tester, String day, String text) {
+      final tile = find
+          .ancestor(of: find.text(day), matching: find.byType(DecoratedBox))
+          .first;
+      return tester
+          .widget<Text>(find.descendant(of: tile, matching: find.text(text)))
+          .style;
+    }
+
+    bool isBold(WidgetTester tester, String day, String text) =>
+        styleOf(tester, day, text)?.fontWeight == FontWeight.bold;
+
+    testWidgets('today with a Shift borrows its Shift Colour, and is bold', (
+      tester,
+    ) async {
+      await pumpAt(
+        tester,
+        DateTime(2026, 2, 15),
+        shifts: {'2026-02-15': ShiftType.notte},
+      );
+      final colors = lightTheme.extension<ShiftColors>()!;
+
+      expect(sideOf(tester.widget(markedTiles())), isNotNull);
+      expect(
+        sideOf(tester.widget(markedTiles()))!.color,
+        colors[ShiftType.notte],
+      );
+      expect(styleOf(tester, '15', 'N')?.color, colors[ShiftType.notte]);
+      expect(isBold(tester, '15', '15'), isTrue);
+      expect(isBold(tester, '15', 'N'), isTrue);
+    });
+
+    testWidgets('today with no Shift falls back to the accent, and has no '
+        'letter', (tester) async {
+      await pumpAt(tester, DateTime(2026, 2, 15));
+
+      expect(
+        sideOf(tester.widget(markedTiles()))!.color,
+        lightTheme.colorScheme.primary,
+      );
+      // No Shift, so no letter at all — the tile is just a number.
+      final tile = find
+          .ancestor(of: find.text('15'), matching: find.byType(DecoratedBox))
+          .first;
+      expect(find.descendant(of: tile, matching: find.byType(Text)), findsOne);
+      expect(isBold(tester, '15', '15'), isTrue);
+    });
+
+    testWidgets('a plain day carries its Shift Colour but no bold and no '
+        'border', (tester) async {
+      await pumpAt(
+        tester,
+        DateTime(2026, 2, 15),
+        shifts: {'2026-02-10': ShiftType.primo},
+      );
+      final colors = lightTheme.extension<ShiftColors>()!;
+
+      expect(styleOf(tester, '10', '7')?.color, colors[ShiftType.primo]);
+      expect(isBold(tester, '10', '10'), isFalse);
+      expect(isBold(tester, '10', '7'), isFalse);
+      // Today is the only marked tile — a Shift does not mark a day.
+      expect(markedTiles(), findsOne);
+    });
+
+    testWidgets('a muted day keeps its colour and one dimming', (tester) async {
+      await pumpAt(
+        tester,
+        DateTime(2026, 2, 15),
+        shifts: {'2026-02-10': ShiftType.primo},
+      );
+      final colors = lightTheme.extension<ShiftColors>()!;
+
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const Key('Filtra per turno')),
+          matching: find.widgetWithText(FilterChip, ShiftType.notte.code),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Dimming is the Opacity's job, so the colour underneath is untouched
+      // and it is applied exactly once.
+      expect(styleOf(tester, '10', '7')?.color, colors[ShiftType.primo]);
+      final opacities = tester.widgetList<Opacity>(
+        find.ancestor(of: find.text('10'), matching: find.byType(Opacity)),
+      );
+      expect(opacities.map((o) => o.opacity), [0.35]);
+    });
+
+    testWidgets('today is never marked on the page it is filler on', (
       tester,
     ) async {
       // 31 August 2026 is a Monday: page one's last day and page two's first
@@ -131,18 +234,23 @@ void main() {
 
       expect(find.text('Settembre 2026'), findsOne, reason: 'page two is up');
       // Counted rather than matched: whether the carousel keeps page one
-      // mounted is its own business, but two filled tiles is never right.
-      expect(
-        tester.widgetList(filledTiles(tester)).length,
-        lessThanOrEqualTo(1),
-      );
+      // mounted is its own business, but two marked tiles is never right.
+      expect(tester.widgetList(markedTiles()).length, lessThanOrEqualTo(1));
     });
 
     testWidgets('the whole month fits, and nothing overflows', (tester) async {
       // A six-row month on a short screen: the tiles compress below square
       // rather than running off the bottom. An overflow fails the test by
       // itself — the harness reports it as an exception.
-      await pumpAt(tester, DateTime(2026, 8, 15), size: const Size(360, 420));
+      //
+      // With a Shift on the tile, so the largest glyph on the grid — the
+      // Shift Code — is the one being squeezed.
+      await pumpAt(
+        tester,
+        DateTime(2026, 8, 15),
+        size: const Size(360, 420),
+        shifts: {'2026-08-15': ShiftType.notte, '2026-08-31': ShiftType.primo},
+      );
 
       expect(tester.takeException(), isNull);
       // Every day of August is on screen: no scrolling, nothing clipped.
@@ -280,6 +388,92 @@ void main() {
       expect(opacityOf(tester, '15'), 1);
     });
 
+    /// How a chip is drawn: its border, its label, and whether anything
+    /// fills its face.
+    ({BorderSide? side, TextStyle? label, bool filled}) chipStyle(
+      WidgetTester tester,
+      Finder chip,
+    ) {
+      final widget = tester.widget<FilterChip>(chip);
+      final side = widget.side;
+      return (
+        side: side is BorderSide ? side : null,
+        label: widget.labelStyle,
+        // Both faces transparent, so neither state is ever a fill.
+        filled:
+            widget.backgroundColor != Colors.transparent ||
+            widget.selectedColor != Colors.transparent,
+      );
+    }
+
+    testWidgets('a picked Shift chip is a Shift Colour border and a bold '
+        'letter, with no fill', (tester) async {
+      await pumpFiltered(tester);
+      final colors = lightTheme.extension<ShiftColors>()!;
+      final chip = chipIn(shiftGroup, ShiftType.notte.code);
+
+      final quiet = chipStyle(tester, chip);
+      expect(quiet.side?.color, lightTheme.colorScheme.outlineVariant);
+      expect(quiet.label?.color, lightTheme.colorScheme.onSurfaceVariant);
+      expect(quiet.label?.fontWeight, FontWeight.normal);
+
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+
+      final picked = chipStyle(tester, chip);
+      expect(picked.side?.color, colors[ShiftType.notte]);
+      expect(picked.side?.width, 1);
+      expect(picked.label?.color, colors[ShiftType.notte]);
+      expect(picked.label?.fontWeight, FontWeight.bold);
+      expect(picked.filled, isFalse, reason: 'the colour is the whole signal');
+      // A tick beside a one-letter label doubles the chip's width and says
+      // nothing the border has not already said.
+      expect(tester.widget<FilterChip>(chip).showCheckmark, isFalse);
+    });
+
+    testWidgets('a picked weekday chip takes the accent in the same shape', (
+      tester,
+    ) async {
+      await pumpFiltered(tester);
+      final chip = chipIn(weekdayGroup, 'L');
+
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+
+      final picked = chipStyle(tester, chip);
+      // A weekday is not a Shift Type, so the accent stands in — same border,
+      // same bold letter.
+      expect(picked.side?.color, lightTheme.colorScheme.primary);
+      expect(picked.side?.width, 1);
+      expect(picked.label?.color, lightTheme.colorScheme.primary);
+      expect(picked.label?.fontWeight, FontWeight.bold);
+      expect(picked.filled, isFalse);
+    });
+
+    testWidgets('the letters are larger than Material would draw them', (
+      tester,
+    ) async {
+      await pumpFiltered(tester);
+
+      // These are the letters read off the real rota, so they take the
+      // heading-sized style rather than the default chip label. Read off the
+      // tree, not off `lightTheme`: the raw ThemeData leaves the sizes to the
+      // typography, which only resolves once it is mounted.
+      final theme = Theme.of(tester.element(find.byType(CalendarPage)));
+      expect(
+        chipStyle(
+          tester,
+          chipIn(shiftGroup, ShiftType.notte.code),
+        ).label?.fontSize,
+        theme.textTheme.titleMedium?.fontSize,
+      );
+      expect(
+        theme.textTheme.titleMedium!.fontSize!,
+        greaterThan(theme.textTheme.labelLarge!.fontSize!),
+        reason: 'larger than the chip label Material would have used',
+      );
+    });
+
     testWidgets('the selection survives a swipe', (tester) async {
       // The controls sit outside the carousel, so paging is not a reason to
       // forget what was chosen.
@@ -343,11 +537,7 @@ void main() {
       }
       expect(
         tester.getSemantics(monday),
-        containsSemantics(
-          isButton: true,
-          isSelected: false,
-          hasTapAction: true,
-        ),
+        isSemantics(isButton: true, isSelected: false, hasTapAction: true),
       );
 
       final notte = find.descendant(
@@ -358,53 +548,12 @@ void main() {
       await tester.tap(chipIn(shiftGroup, ShiftType.notte.code));
       await tester.pumpAndSettle();
 
-      expect(tester.getSemantics(monday), containsSemantics(isSelected: true));
-      expect(tester.getSemantics(notte), containsSemantics(isSelected: true));
+      expect(tester.getSemantics(monday), isSemantics(isSelected: true));
+      expect(tester.getSemantics(notte), isSemantics(isSelected: true));
       // The chips are the whole account of what is selected — no line
       // anywhere restates it in letters.
       expect(find.text('N, L'), findsNothing);
       handle.dispose();
-    });
-  });
-
-  group('the edit button', () {
-    testWidgets('is a pencil FAB in the bottom-right corner', (tester) async {
-      await pumpAt(tester, DateTime(2026, 2, 15));
-
-      final fab = find.byType(FloatingActionButton);
-      expect(fab, findsOne);
-      expect(
-        find.descendant(of: fab, matching: find.byIcon(Icons.edit)),
-        findsOne,
-        reason: 'a pencil — the editor only ever overwrites',
-      );
-      expect(find.text('Modifica'), findsNothing, reason: 'the old button');
-
-      // Bottom-right: past the middle on both axes.
-      final rect = tester.getRect(fab);
-      final screen = tester.getRect(find.byType(CalendarPage));
-      expect(rect.center.dx, greaterThan(screen.center.dx));
-      expect(rect.center.dy, greaterThan(screen.center.dy));
-    });
-
-    testWidgets('never covers a day, even on a short screen', (tester) async {
-      // A six-row month with the grid filling the height — the case where the
-      // last row would otherwise run under the button.
-      await pumpAt(tester, DateTime(2026, 8, 15), size: const Size(360, 420));
-
-      final fab = tester.getRect(find.byType(FloatingActionButton));
-      final tiles = find.descendant(
-        of: find.byType(PageView),
-        matching: find.byType(DecoratedBox),
-      );
-      for (final tile in tiles.evaluate()) {
-        final box = tile.renderObject! as RenderBox;
-        expect(
-          (box.localToGlobal(Offset.zero) & box.size).overlaps(fab),
-          isFalse,
-          reason: 'a day cell is under the button',
-        );
-      }
     });
   });
 
@@ -421,10 +570,8 @@ void main() {
       await cubit.load();
       await tester.pumpWidget(
         MaterialApp(
-          home: BlocProvider.value(
-            value: cubit,
-            child: CalendarPage(repository: repository),
-          ),
+          theme: lightTheme,
+          home: BlocProvider.value(value: cubit, child: const CalendarPage()),
         ),
       );
     }
@@ -434,11 +581,6 @@ void main() {
 
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.text('Impossibile leggere i turni.'), findsOne);
-      expect(
-        find.byType(FloatingActionButton),
-        findsNothing,
-        reason: 'nothing to edit',
-      );
     });
 
     testWidgets('Riprova syncs and draws the Calendar', (tester) async {
@@ -451,7 +593,6 @@ void main() {
       // Sync first: the schema arrives with it, which is the whole point.
       expect(repository.calls.sublist(1), ['sync', 'fetchRange']);
       expect(find.text('Febbraio 2026'), findsOne);
-      expect(find.byType(FloatingActionButton), findsOne);
     });
   });
 
@@ -467,10 +608,8 @@ void main() {
       await cubit.load();
       await tester.pumpWidget(
         MaterialApp(
-          home: BlocProvider.value(
-            value: cubit,
-            child: CalendarPage(repository: repository),
-          ),
+          theme: lightTheme,
+          home: BlocProvider.value(value: cubit, child: const CalendarPage()),
         ),
       );
       repository.failing.add('sync');

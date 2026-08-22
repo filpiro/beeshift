@@ -1,29 +1,22 @@
 import 'dart:math' as math;
 
+import 'package:catui/catui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'calendar_cubit.dart';
-import 'italian_dates.dart';
-import 'month_editor_cubit.dart';
-import 'month_editor_page.dart';
-import 'shift_type.dart';
-import 'shifts_repository.dart';
-
-/// Height kept clear under the grid: a 56dp floating button, the Scaffold's
-/// 16dp margin below it, and 8dp so the last row is not touching it.
-const _fabReserve = 80.0;
+import '../../shared/italian_dates.dart';
+import '../../shared/shift_colors.dart';
+import '../../shared/shift_type.dart';
+import '../../shared/widgets/floating_bottom_bar.dart';
+import '../../shared/widgets/picked_style.dart';
+import 'cubit/calendar_cubit.dart';
 
 /// The Calendar: the Data Window's two months as a carousel. Every decision it
 /// draws — which cells exist, which are filler, what each one shows — was
-/// already made in [CalendarCubit].
+/// already made in [CalendarCubit]. The edit button lives in the Shell now,
+/// which is also the only thing here that writes.
 class CalendarPage extends StatefulWidget {
-  const CalendarPage({super.key, required this.repository});
-
-  /// Handed on to the Month Editor, which is the only thing here that writes.
-  /// It arrives from the app's wiring rather than through [CalendarCubit],
-  /// which is read-only and has no business lending out a write path.
-  final ShiftsRepository repository;
+  const CalendarPage({super.key});
 
   @override
   State<CalendarPage> createState() => _CalendarPageState();
@@ -73,20 +66,13 @@ class _CalendarPageState extends State<CalendarPage>
       builder: (context, state) {
         final grids = state.grids;
         // Its own Scaffold, not the app's: that one also hosts the loading
-        // spinner and the connect-error screen, and an edit button floating
-        // over a database that would not open invites editing nothing.
+        // spinner and the connect-error screen, which the Shell never mounts
+        // over — see ADR 0004.
         return Scaffold(
-          floatingActionButton: grids == null
-              ? null
-              : FloatingActionButton(
-                  onPressed: () => _openEditor(context),
-                  // The icon alone is nameless to a screen reader.
-                  tooltip: 'Modifica',
-                  // A pencil, not a plus: the editor overwrites the month's
-                  // days and never creates a Shift out of nothing.
-                  child: const Icon(Icons.edit),
-                ),
           body: SafeArea(
+            // Not at the bottom: `barReserve` already measures from the raw
+            // edge, and a SafeArea under it would take the inset off twice.
+            bottom: false,
             child: switch (grids) {
               // A first load that failed: the spinner would otherwise spin for
               // as long as the app is open, saying nothing.
@@ -152,10 +138,10 @@ class _CalendarPageState extends State<CalendarPage>
         ),
         Expanded(
           child: Padding(
-            // The floating button overlaps whatever is under it, and on a
-            // short screen the grid reaches the bottom. Reserved here so
-            // the last row stops above it rather than under it.
-            padding: const EdgeInsets.only(bottom: _fabReserve),
+            // The floating bar overlaps whatever is under it, and on a short
+            // screen the grid reaches the bottom. Reserved here so the last
+            // row stops above it rather than under it.
+            padding: EdgeInsets.only(bottom: barReserve(context)),
             child: RefreshIndicator(
               onRefresh: _pullToRefresh,
               // The pull comes from inside a page, so it reaches here one
@@ -174,26 +160,6 @@ class _CalendarPageState extends State<CalendarPage>
         ),
       ],
     );
-  }
-
-  /// Opens the Month Editor on whichever month is on screen, pre-loaded from
-  /// the grid already in hand. On the way back the Calendar re-queries — a
-  /// local read, no sync: read-your-writes means the row is already there.
-  Future<void> _openEditor(BuildContext context) async {
-    final calendar = context.read<CalendarCubit>();
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => BlocProvider(
-          create: (_) => MonthEditorCubit(
-            widget.repository,
-            month: calendar.state.visibleMonth,
-            shifts: calendar.state.visibleMonthShifts,
-          ),
-          child: const MonthEditorPage(),
-        ),
-      ),
-    );
-    await calendar.load();
   }
 }
 
@@ -243,8 +209,10 @@ class _FilterControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<CalendarCubit>();
+    final theme = Theme.of(context);
+    final colors = ShiftColors.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -254,15 +222,14 @@ class _FilterControls extends StatelessWidget {
             heading: 'Filtra per turno',
             children: [
               for (final type in ShiftType.values)
-                FilterChip(
+                _FilterLetter(
                   // The letter is drawn, the Italian name is spoken — the same
                   // trade the Month Editor's segments make.
-                  label: Text(type.code, semanticsLabel: type.label),
+                  code: type.code,
+                  label: type.label,
+                  color: colors[type],
                   selected: shiftFilter.contains(type),
-                  // A tick beside a one-letter label doubles the chip's width
-                  // and says nothing the fill has not already said.
-                  showCheckmark: false,
-                  onSelected: (_) => cubit.toggleShift(type),
+                  onSelected: () => cubit.toggleShift(type),
                 ),
             ],
           ),
@@ -271,19 +238,68 @@ class _FilterControls extends StatelessWidget {
             heading: 'Filtra per giorno',
             children: [
               for (var day = DateTime.monday; day <= DateTime.sunday; day++)
-                FilterChip(
-                  label: Text(
-                    weekdayNames[day][0],
-                    semanticsLabel: weekdayNames[day],
-                  ),
+                _FilterLetter(
+                  code: weekdayNames[day][0],
+                  label: weekdayNames[day],
+                  // A weekday is not a Shift Type and has no Shift Colour, so
+                  // the app's accent stands in — same shape, same border,
+                  // yellow rather than a hue that would claim to be a Shift.
+                  color: theme.colorScheme.primary,
                   selected: weekdayFilter.contains(day),
-                  showCheckmark: false,
-                  onSelected: (_) => cubit.toggleWeekday(day),
+                  onSelected: () => cubit.toggleWeekday(day),
                 ),
             ],
           ),
         ],
       ),
+    );
+  }
+}
+
+/// One letter in the Filter, drawn the way the Month Editor draws its
+/// choices — the shared idiom in [pickedStyle], not a shared widget: this one
+/// wraps and multi-selects, and a control covering both would carry two
+/// behaviours to serve neither.
+class _FilterLetter extends StatelessWidget {
+  const _FilterLetter({
+    required this.code,
+    required this.label,
+    required this.color,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  /// The letter that is drawn.
+  final String code;
+
+  /// The Italian name, which is what a screen reader says — and, for the
+  /// weekdays, the only thing telling the two `M`s apart.
+  final String label;
+
+  /// What this letter turns when it is picked.
+  final Color color;
+
+  final bool selected;
+
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final picked = pickedStyle(theme, color: color, selected: selected);
+    return FilterChip(
+      label: Text(code, semanticsLabel: label),
+      selected: selected,
+      // No fill either way: the border and the letter carry it, so the two
+      // states differ by colour and weight alone.
+      backgroundColor: Colors.transparent,
+      selectedColor: Colors.transparent,
+      side: picked.side,
+      labelStyle: picked.labelStyle,
+      // A tick beside a one-letter label doubles the chip's width and says
+      // nothing the border has not already said.
+      showCheckmark: false,
+      onSelected: (_) => onSelected(),
     );
   }
 }
@@ -390,54 +406,80 @@ class _DayCellView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Today is filled only on the page that owns the day. It also appears as
+    final shift = cell.shift;
+    // A day with no Shift has no Shift Colour, so the accent stands in.
+    final shiftColor = shift == null
+        ? theme.colorScheme.primary
+        : ShiftColors.of(context)[shift];
+    // Today is marked only on the page that owns the day. It also appears as
     // filler on the next month's page whenever it is the last day of a month,
-    // and a dimmed tile carrying a loud fill is neither one thing nor the
+    // and a dimmed tile carrying a loud mark is neither one thing nor the
     // other — so the page that merely borrows the day draws it plainly.
     final highlighted = cell.isToday && !cell.isFiller;
-    final foreground = highlighted ? theme.colorScheme.onPrimary : null;
     return Opacity(
       // One opacity for both reasons, so a muted filler day is not dimmed
-      // twice. Today's fill dims with everything else: an exception for it
+      // twice. Today's mark dims with everything else: an exception for it
       // would read as "today matched".
       opacity: cell.isFiller || muted ? 0.35 : 1,
       child: Padding(
         padding: const EdgeInsets.all(2),
         child: DecoratedBox(
           decoration: ShapeDecoration(
-            color: highlighted ? theme.colorScheme.primary : null,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              // The fill says everything today's tile needs to say; an outline
-              // on top of it would only muddy the edge.
+              borderRadius: BorderRadius.circular(AppTokens.radius),
+              // Today keeps its own Shift Colour on the edge rather than a
+              // slab of accent across the face: the Shift Code inside stays
+              // the thing you read, and the border is only how you find it.
               side: highlighted
-                  ? BorderSide.none
+                  ? BorderSide(color: shiftColor)
                   : BorderSide(color: theme.colorScheme.outlineVariant),
             ),
           ),
-          child: Center(
-            // Tiles get small on a short screen. Scaling down beats clipping,
-            // and beats a layout that only works above some secret width.
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
+          // Tiles get small on a short screen. Scaling each text down beats
+          // clipping, and beats a layout that only works above some width.
+          child: Stack(
+            children: [
+              // The day number is how you find the right tile, not what you
+              // read off it — so it stays small and gets out of the corner
+              // the Shift Code wants.
+              Positioned(
+                top: 6,
+                right: 6,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
                     '${cell.date.day}',
                     style: theme.textTheme.labelMedium?.copyWith(
-                      color: foreground,
+                      fontWeight: highlighted ? FontWeight.bold : null,
                     ),
                   ),
-                  Text(
-                    cell.shift?.code ?? '',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: foreground,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
+              if (shift != null)
+                Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Padding(
+                    // The day number sits 4px off a ~12px label; the Shift Code
+                    // is drawn twice that size, so it sits twice as far off the
+                    // corner and the two insets read as the same gap.
+                    padding: const EdgeInsets.only(left: 8, bottom: 4),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        shift.code,
+                        // The letter is drawn and the colour carries it; the
+                        // Italian name is what is spoken — colour says
+                        // nothing out loud, and neither does a bare `N`.
+                        semanticsLabel: shift.label,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          color: shiftColor,
+                          fontWeight: highlighted ? FontWeight(900) : null,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),

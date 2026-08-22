@@ -1,5 +1,5 @@
-import 'package:beeshift/shift_type.dart';
-import 'package:beeshift/shifts_repository.dart';
+import 'package:beeshift/data/shifts_repository.dart';
+import 'package:beeshift/shared/shift_type.dart';
 
 /// The primary test seam: a plain class standing in for [ShiftsRepository] via
 /// its implicit interface — no abstract class exists, and none is needed.
