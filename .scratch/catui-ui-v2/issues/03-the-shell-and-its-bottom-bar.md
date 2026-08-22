@@ -16,18 +16,18 @@ The bar and its active-pill rule live in one shared widget taking a list of dest
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] There is no floating edit button anywhere in the app
-- [ ] A floating pill sits centred above the bottom edge of the Calendar, hugging two icon buttons rather than spanning the screen
-- [ ] The Settings button shows Settings, and shows it as active while it does
-- [ ] Tapping the active Settings button returns to the Calendar
-- [ ] Coming back from Settings finds the Calendar on the same month with the same Filter selections
-- [ ] The edit button opens the Month Editor full-screen with no bar visible over it, on the month the Calendar was showing, pre-loaded
-- [ ] The Month Editor still has its own back button and its Save in the app bar, and saving still returns to a refreshed Calendar
-- [ ] The edit button is disabled while the Calendar has no grids, and the Settings button is not
-- [ ] No bar is drawn over the connect-error screen or the opening spinner
-- [ ] The last row of a six-row month is fully visible above the bar
-- [ ] Settings offers light, dark and system, and tapping one repaints the app immediately
-- [ ] Both bar buttons are announced by name to a screen reader
-- [ ] A Shell-level widget test covers the bar, the active state, the round trip to Settings, the editor push and the disabled edit button
+- [x] There is no floating edit button anywhere in the app
+- [x] A floating pill sits centred above the bottom edge of the Calendar, hugging two icon buttons rather than spanning the screen
+- [x] The Settings button shows Settings, and shows it as active while it does
+- [x] Tapping the active Settings button returns to the Calendar
+- [x] Coming back from Settings finds the Calendar on the same month with the same Filter selections
+- [x] The edit button opens the Month Editor full-screen with no bar visible over it, on the month the Calendar was showing, pre-loaded
+- [x] The Month Editor still has its own back button and its Save in the app bar, and saving still returns to a refreshed Calendar
+- [x] The edit button is disabled while the Calendar has no grids, and the Settings button is not
+- [x] No bar is drawn over the connect-error screen or the opening spinner
+- [x] The last row of a six-row month is fully visible above the bar
+- [x] Settings offers light, dark and system, and tapping one repaints the app immediately
+- [x] Both bar buttons are announced by name to a screen reader
+- [x] A Shell-level widget test covers the bar, the active state, the round trip to Settings, the editor push and the disabled edit button

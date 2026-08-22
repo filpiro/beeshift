@@ -1,7 +1,6 @@
 import 'package:beeshift/features/calendar/calendar_view.dart';
 import 'package:beeshift/features/calendar/cubit/calendar_cubit.dart';
 import 'package:beeshift/shared/shift_type.dart';
-import 'package:catui/catui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,10 +18,7 @@ void main() {
     await cubit.load();
     await tester.pumpWidget(
       MaterialApp(
-        home: BlocProvider.value(
-          value: cubit,
-          child: CalendarPage(repository: repository),
-        ),
+        home: BlocProvider.value(value: cubit, child: const CalendarPage()),
       ),
     );
     repository.calls.clear();
@@ -74,10 +70,7 @@ void main() {
     await cubit.load();
     await tester.pumpWidget(
       MaterialApp(
-        home: BlocProvider.value(
-          value: cubit,
-          child: CalendarPage(repository: repository),
-        ),
+        home: BlocProvider.value(value: cubit, child: const CalendarPage()),
       ),
     );
   }
@@ -344,11 +337,7 @@ void main() {
       }
       expect(
         tester.getSemantics(monday),
-        isSemantics(
-          isButton: true,
-          isSelected: false,
-          hasTapAction: true,
-        ),
+        isSemantics(isButton: true, isSelected: false, hasTapAction: true),
       );
 
       final notte = find.descendant(
@@ -368,47 +357,6 @@ void main() {
     });
   });
 
-  group('the edit button', () {
-    testWidgets('is a pencil FAB in the bottom-right corner', (tester) async {
-      await pumpAt(tester, DateTime(2026, 2, 15));
-
-      final fab = find.byType(FloatingActionButton);
-      expect(fab, findsOne);
-      expect(
-        find.descendant(of: fab, matching: find.byIcon(LucideIcons.pencil)),
-        findsOne,
-        reason: 'a pencil — the editor only ever overwrites',
-      );
-      expect(find.text('Modifica'), findsNothing, reason: 'the old button');
-
-      // Bottom-right: past the middle on both axes.
-      final rect = tester.getRect(fab);
-      final screen = tester.getRect(find.byType(CalendarPage));
-      expect(rect.center.dx, greaterThan(screen.center.dx));
-      expect(rect.center.dy, greaterThan(screen.center.dy));
-    });
-
-    testWidgets('never covers a day, even on a short screen', (tester) async {
-      // A six-row month with the grid filling the height — the case where the
-      // last row would otherwise run under the button.
-      await pumpAt(tester, DateTime(2026, 8, 15), size: const Size(360, 420));
-
-      final fab = tester.getRect(find.byType(FloatingActionButton));
-      final tiles = find.descendant(
-        of: find.byType(PageView),
-        matching: find.byType(DecoratedBox),
-      );
-      for (final tile in tiles.evaluate()) {
-        final box = tile.renderObject! as RenderBox;
-        expect(
-          (box.localToGlobal(Offset.zero) & box.size).overlaps(fab),
-          isFalse,
-          reason: 'a day cell is under the button',
-        );
-      }
-    });
-  });
-
   group('when the very first load fails', () {
     /// A brand-new install with no schema in the replica: the first query
     /// throws and there is nothing to draw.
@@ -422,10 +370,7 @@ void main() {
       await cubit.load();
       await tester.pumpWidget(
         MaterialApp(
-          home: BlocProvider.value(
-            value: cubit,
-            child: CalendarPage(repository: repository),
-          ),
+          home: BlocProvider.value(value: cubit, child: const CalendarPage()),
         ),
       );
     }
@@ -435,11 +380,6 @@ void main() {
 
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.text('Impossibile leggere i turni.'), findsOne);
-      expect(
-        find.byType(FloatingActionButton),
-        findsNothing,
-        reason: 'nothing to edit',
-      );
     });
 
     testWidgets('Riprova syncs and draws the Calendar', (tester) async {
@@ -452,7 +392,6 @@ void main() {
       // Sync first: the schema arrives with it, which is the whole point.
       expect(repository.calls.sublist(1), ['sync', 'fetchRange']);
       expect(find.text('Febbraio 2026'), findsOne);
-      expect(find.byType(FloatingActionButton), findsOne);
     });
   });
 
@@ -468,10 +407,7 @@ void main() {
       await cubit.load();
       await tester.pumpWidget(
         MaterialApp(
-          home: BlocProvider.value(
-            value: cubit,
-            child: CalendarPage(repository: repository),
-          ),
+          home: BlocProvider.value(value: cubit, child: const CalendarPage()),
         ),
       );
       repository.failing.add('sync');

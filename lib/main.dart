@@ -3,8 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'data/shifts_repository.dart';
-import 'features/calendar/calendar_view.dart';
 import 'features/calendar/cubit/calendar_cubit.dart';
+import 'features/shell/shell_view.dart';
 import 'shared/theme.dart';
 
 // Supplied at build time: flutter run --dart-define-from-file=env.json
@@ -61,6 +61,10 @@ class _MainAppState extends State<MainApp> {
   /// Future runs once, so retrying means opening a new one.
   late Future<ShiftsRepository> _repository = _open();
 
+  /// The worker's Theme Mode choice, made from Settings and applied on the
+  /// spot. Not persisted yet — that is ticket 04.
+  final _themeMode = ValueNotifier(ThemeMode.system);
+
   /// Opening starts immediately, but the FutureBuilder only subscribes at the
   /// next build — so a failure landing in between would be reported as an
   /// unhandled async error. [Future.ignore] marks it handled without hiding
@@ -68,50 +72,57 @@ class _MainAppState extends State<MainApp> {
   Future<ShiftsRepository> _open() => widget.open()..ignore();
 
   @override
+  void dispose() {
+    _themeMode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      theme: lightTheme,
-      darkTheme: darkTheme,
-      // The only theme axis the worker controls is on the device, not here —
-      // see Theme Mode in the glossary. Choosing it is ticket 03.
-      themeMode: ThemeMode.system,
-      // No Scaffold here: each of the three states brings its own, so the
-      // Calendar's edit button cannot float over the other two.
-      home: FutureBuilder(
-        future: _repository,
-        builder: (context, snapshot) {
-          // Full screen, because there is no app without the database —
-          // showing an empty Calendar would be pretending otherwise.
-          if (snapshot.hasError) {
-            // The screen stays plain — the cause goes to the console, so a
-            // build-config mistake doesn't look like a dead network.
-            debugPrint('Opening the database failed: ${snapshot.error}');
-            // A statement body, not an arrow: setState must not be handed
-            // a closure that returns the Future it has just assigned.
-            return Scaffold(
-              body: SafeArea(
-                child: _ConnectError(
-                  onRetry: () {
-                    setState(() {
-                      _repository = _open();
-                    });
-                  },
+    return ValueListenableBuilder(
+      valueListenable: _themeMode,
+      builder: (context, themeMode, _) => MaterialApp(
+        theme: lightTheme,
+        darkTheme: darkTheme,
+        themeMode: themeMode,
+        // No Scaffold here: each of the three states brings its own, so the
+        // Shell's bar cannot float over the other two.
+        home: FutureBuilder(
+          future: _repository,
+          builder: (context, snapshot) {
+            // Full screen, because there is no app without the database —
+            // showing an empty Calendar would be pretending otherwise.
+            if (snapshot.hasError) {
+              // The screen stays plain — the cause goes to the console, so a
+              // build-config mistake doesn't look like a dead network.
+              debugPrint('Opening the database failed: ${snapshot.error}');
+              // A statement body, not an arrow: setState must not be handed
+              // a closure that returns the Future it has just assigned.
+              return Scaffold(
+                body: SafeArea(
+                  child: _ConnectError(
+                    onRetry: () {
+                      setState(() {
+                        _repository = _open();
+                      });
+                    },
+                  ),
                 ),
-              ),
+              );
+            }
+            final repository = snapshot.data;
+            if (repository == null) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+            return BlocProvider(
+              create: (_) =>
+                  CalendarCubit(repository, clock: DateTime.now)..load(),
+              child: ShellPage(repository: repository, themeMode: _themeMode),
             );
-          }
-          final repository = snapshot.data;
-          if (repository == null) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
-          return BlocProvider(
-            create: (_) =>
-                CalendarCubit(repository, clock: DateTime.now)..load(),
-            child: CalendarPage(repository: repository),
-          );
-        },
+          },
+        ),
       ),
     );
   }

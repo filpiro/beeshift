@@ -1,30 +1,19 @@
 import 'dart:math' as math;
 
-import 'package:catui/catui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../data/shifts_repository.dart';
 import '../../shared/italian_dates.dart';
 import '../../shared/shift_type.dart';
-import '../month_editor/cubit/month_editor_cubit.dart';
-import '../month_editor/month_editor_view.dart';
+import '../../shared/widgets/floating_bottom_bar.dart';
 import 'cubit/calendar_cubit.dart';
-
-/// Height kept clear under the grid: a 56dp floating button, the Scaffold's
-/// 16dp margin below it, and 8dp so the last row is not touching it.
-const _fabReserve = 80.0;
 
 /// The Calendar: the Data Window's two months as a carousel. Every decision it
 /// draws — which cells exist, which are filler, what each one shows — was
-/// already made in [CalendarCubit].
+/// already made in [CalendarCubit]. The edit button lives in the Shell now,
+/// which is also the only thing here that writes.
 class CalendarPage extends StatefulWidget {
-  const CalendarPage({super.key, required this.repository});
-
-  /// Handed on to the Month Editor, which is the only thing here that writes.
-  /// It arrives from the app's wiring rather than through [CalendarCubit],
-  /// which is read-only and has no business lending out a write path.
-  final ShiftsRepository repository;
+  const CalendarPage({super.key});
 
   @override
   State<CalendarPage> createState() => _CalendarPageState();
@@ -74,19 +63,9 @@ class _CalendarPageState extends State<CalendarPage>
       builder: (context, state) {
         final grids = state.grids;
         // Its own Scaffold, not the app's: that one also hosts the loading
-        // spinner and the connect-error screen, and an edit button floating
-        // over a database that would not open invites editing nothing.
+        // spinner and the connect-error screen, which the Shell never mounts
+        // over — see ADR 0004.
         return Scaffold(
-          floatingActionButton: grids == null
-              ? null
-              : FloatingActionButton(
-                  onPressed: () => _openEditor(context),
-                  // The icon alone is nameless to a screen reader.
-                  tooltip: 'Modifica',
-                  // A pencil, not a plus: the editor overwrites the month's
-                  // days and never creates a Shift out of nothing.
-                  child: const Icon(LucideIcons.pencil),
-                ),
           body: SafeArea(
             child: switch (grids) {
               // A first load that failed: the spinner would otherwise spin for
@@ -153,10 +132,10 @@ class _CalendarPageState extends State<CalendarPage>
         ),
         Expanded(
           child: Padding(
-            // The floating button overlaps whatever is under it, and on a
-            // short screen the grid reaches the bottom. Reserved here so
-            // the last row stops above it rather than under it.
-            padding: const EdgeInsets.only(bottom: _fabReserve),
+            // The floating bar overlaps whatever is under it, and on a short
+            // screen the grid reaches the bottom. Reserved here so the last
+            // row stops above it rather than under it.
+            padding: const EdgeInsets.only(bottom: barReserve),
             child: RefreshIndicator(
               onRefresh: _pullToRefresh,
               // The pull comes from inside a page, so it reaches here one
@@ -175,26 +154,6 @@ class _CalendarPageState extends State<CalendarPage>
         ),
       ],
     );
-  }
-
-  /// Opens the Month Editor on whichever month is on screen, pre-loaded from
-  /// the grid already in hand. On the way back the Calendar re-queries — a
-  /// local read, no sync: read-your-writes means the row is already there.
-  Future<void> _openEditor(BuildContext context) async {
-    final calendar = context.read<CalendarCubit>();
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => BlocProvider(
-          create: (_) => MonthEditorCubit(
-            widget.repository,
-            month: calendar.state.visibleMonth,
-            shifts: calendar.state.visibleMonthShifts,
-          ),
-          child: const MonthEditorPage(),
-        ),
-      ),
-    );
-    await calendar.load();
   }
 }
 

@@ -1,5 +1,5 @@
-import 'package:beeshift/features/calendar/calendar_view.dart';
 import 'package:beeshift/features/calendar/cubit/calendar_cubit.dart';
+import 'package:beeshift/features/shell/shell_view.dart';
 import 'package:beeshift/shared/shift_type.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -7,8 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../data/fake_shifts_repository.dart';
 
-/// The editor as reached from the Calendar — which month it targets, and what
-/// happens on the way back. The payload itself is asserted on the cubit.
+/// The editor as reached from the Shell's bar — which month it targets, and
+/// what happens on the way back. The payload itself is asserted on the cubit.
 void main() {
   late FakeShiftsRepository repository;
 
@@ -26,7 +26,10 @@ void main() {
       MaterialApp(
         home: BlocProvider.value(
           value: calendar,
-          child: CalendarPage(repository: repository),
+          child: ShellPage(
+            repository: repository,
+            themeMode: ValueNotifier(ThemeMode.system),
+          ),
         ),
       ),
     );
@@ -35,7 +38,7 @@ void main() {
   }
 
   Future<void> openEditor(WidgetTester tester) async {
-    await tester.tap(find.byType(FloatingActionButton));
+    await tester.tap(find.byTooltip('Modifica'));
     await tester.pumpAndSettle();
   }
 
@@ -180,7 +183,7 @@ void main() {
       {'2026-02-01': ShiftType.riposo},
     ]);
     // Popped back to the Calendar, which now shows the saved Shift.
-    expect(find.byType(FloatingActionButton), findsOne);
+    expect(find.byTooltip('Modifica'), findsOne);
     expect(find.text(ShiftType.riposo.code), findsWidgets);
   });
 
@@ -201,11 +204,7 @@ void main() {
       await failingSave(tester);
 
       expect(find.text('Febbraio 2026'), findsOne, reason: 'still the editor');
-      expect(
-        find.byType(FloatingActionButton),
-        findsNothing,
-        reason: 'did not pop',
-      );
+      expect(find.byTooltip('Modifica'), findsNothing, reason: 'did not pop');
       expect(
         tester
             .widget<SegmentedButton<ShiftType>>(
@@ -245,7 +244,7 @@ void main() {
         {'2026-02-01': ShiftType.riposo},
       ]);
       expect(
-        find.byType(FloatingActionButton),
+        find.byTooltip('Modifica'),
         findsOne,
         reason: 'back on the Calendar',
       );
