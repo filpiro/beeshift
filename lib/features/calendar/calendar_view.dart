@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:catui/catui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -84,7 +85,7 @@ class _CalendarPageState extends State<CalendarPage>
                   tooltip: 'Modifica',
                   // A pencil, not a plus: the editor overwrites the month's
                   // days and never creates a Shift out of nothing.
-                  child: const Icon(Icons.edit),
+                  child: const Icon(LucideIcons.pencil),
                 ),
           body: SafeArea(
             child: switch (grids) {

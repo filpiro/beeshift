@@ -12,13 +12,17 @@ Both themes are handed to the app at once and the mode follows the system. Choos
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `catui` is the only new dependency, referenced by git on `main`, and neither the palette nor the icon package is declared directly
-- [ ] The app has a light theme and a dark theme, built from `catui`'s theme function on latte and mocha
-- [ ] The accent is the flavor's yellow in both, read per flavor rather than hardcoded
-- [ ] Turning the phone from light to dark and back repaints the app both ways
-- [ ] The Filter's chips match the app's corner radius rather than the framework default
-- [ ] No Material icon is left anywhere in the app
-- [ ] No screen gains, loses or moves a control
-- [ ] `flutter analyze` is clean and the whole suite passes
+- [x] `catui` is the only new dependency, referenced by git on `main`, and neither the palette nor the icon package is declared directly
+- [x] The app has a light theme and a dark theme, built from `catui`'s theme function on latte and mocha
+- [x] The accent is the flavor's yellow in both, read per flavor rather than hardcoded
+- [x] Turning the phone from light to dark and back repaints the app both ways
+- [x] The Filter's chips match the app's corner radius rather than the framework default
+- [x] No Material icon is left anywhere in the app
+- [x] No screen gains, loses or moves a control
+- [x] `flutter analyze` is clean and the whole suite passes
+
+## Comments
+
+`lib/shared/theme.dart` mirrors Clockodile's theme file: `catTheme(flavor, brightness, primary: flavor.yellow)` per flavor, plus a `chipTheme` override (the one thing `catui` doesn't cover) matching `AppTokens.radius`. `main.dart` wires `theme`/`darkTheme`/`themeMode: ThemeMode.system`. The FAB's `Icons.edit` became `LucideIcons.pencil` — the only Material icon in the app — and the test asserting on it was updated to match. `flutter analyze`: clean. `flutter test`: 89/89 passed.

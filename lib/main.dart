@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'data/shifts_repository.dart';
 import 'features/calendar/calendar_view.dart';
 import 'features/calendar/cubit/calendar_cubit.dart';
+import 'shared/theme.dart';
 
 // Supplied at build time: flutter run --dart-define-from-file=env.json
 const _syncUrl = String.fromEnvironment('TURSO_DATABASE_URL');
@@ -69,6 +70,11 @@ class _MainAppState extends State<MainApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      theme: lightTheme,
+      darkTheme: darkTheme,
+      // The only theme axis the worker controls is on the device, not here —
+      // see Theme Mode in the glossary. Choosing it is ticket 03.
+      themeMode: ThemeMode.system,
       // No Scaffold here: each of the three states brings its own, so the
       // Calendar's edit button cannot float over the other two.
       home: FutureBuilder(

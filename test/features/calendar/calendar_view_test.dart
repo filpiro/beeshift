@@ -1,6 +1,7 @@
 import 'package:beeshift/features/calendar/calendar_view.dart';
 import 'package:beeshift/features/calendar/cubit/calendar_cubit.dart';
 import 'package:beeshift/shared/shift_type.dart';
+import 'package:catui/catui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -374,7 +375,7 @@ void main() {
       final fab = find.byType(FloatingActionButton);
       expect(fab, findsOne);
       expect(
-        find.descendant(of: fab, matching: find.byIcon(Icons.edit)),
+        find.descendant(of: fab, matching: find.byIcon(LucideIcons.pencil)),
         findsOne,
         reason: 'a pencil — the editor only ever overwrites',
       );
