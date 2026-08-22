@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:catui/catui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -367,7 +368,7 @@ class _DayCellView extends StatelessWidget {
           decoration: ShapeDecoration(
             color: highlighted ? theme.colorScheme.primary : null,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppTokens.radius),
               // The fill says everything today's tile needs to say; an outline
               // on top of it would only muddy the edge.
               side: highlighted

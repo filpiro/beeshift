@@ -12,14 +12,18 @@ If nothing is left to do after ticket 02, close this as done and say so. It exis
 
 **Blocked by:** 02, 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Day tiles use the shared corner radius and take every colour from the palette
-- [ ] Today is still filled in the accent, still only on the page that owns the day
-- [ ] Filler and muted days are dimmed exactly as before, and never dimmed twice
-- [ ] Both filter groups still draw the same chips under the same headings, still multi-select, still without check marks
-- [ ] Every chip still announces its full Italian name and its selected state
-- [ ] The OR-within, AND-across rule and the Empty-day rule are unchanged
-- [ ] A six-row month on a short screen still fits above the Bottom Bar with nothing overflowing
-- [ ] Swipe, pull-to-refresh, the resume refresh and the month title all behave as before
-- [ ] The whole suite passes with no assertion about behaviour rewritten
+- [x] Day tiles use the shared corner radius and take every colour from the palette
+- [x] Today is still filled in the accent, still only on the page that owns the day
+- [x] Filler and muted days are dimmed exactly as before, and never dimmed twice
+- [x] Both filter groups still draw the same chips under the same headings, still multi-select, still without check marks
+- [x] Every chip still announces its full Italian name and its selected state
+- [x] The OR-within, AND-across rule and the Empty-day rule are unchanged
+- [x] A six-row month on a short screen still fits above the Bottom Bar with nothing overflowing
+- [x] Swipe, pull-to-refresh, the resume refresh and the month title all behave as before
+- [x] The whole suite passes with no assertion about behaviour rewritten
+
+## Comments
+
+Only one spot still read as framework default: the day tile's `BorderRadius.circular(12)` in `lib/features/calendar/calendar_view.dart`, a number of its own rather than the shared one. Swapped for `AppTokens.radius` (10). Everything else the ticket asks for was already true post-ticket-02: fill/foreground/outline already come from `theme.colorScheme` (catui's palette), the Filter's chips already carry the app's corner radius via the `chipTheme` override in `theme.dart`, and the 0.35 dimming opacity is untouched. `flutter analyze`: clean. `flutter test`: 98/98 passed. Verified on the emulator (`emulator-5554`): today's tile fills in the accent, day tiles and chips share the same rounding, filler days stay dimmed.
