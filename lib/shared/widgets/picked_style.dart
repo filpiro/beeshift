@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 /// How the app says "this one is picked", in the one place both the Filter's
 /// chips and the Month Editor's row of choices read it from.
 ///
-/// No fill: a two-pixel border in the thing's own colour, and its letter bold
+/// No fill: a hairline border in the thing's own colour, and its letter bold
 /// in that same colour. The colour is the whole signal, which is why nothing
 /// tints the face behind it — a fill and a border saying the same thing only
 /// make the edge harder to read.
@@ -25,7 +25,7 @@ import 'package:flutter/material.dart';
   required bool selected,
 }) => (
   side: selected
-      ? BorderSide(color: color, width: 2)
+      ? BorderSide(color: color)
       : BorderSide(color: theme.colorScheme.outlineVariant),
   // Larger than Material's default label in both places: these are the letters
   // the user reads off the real rota.

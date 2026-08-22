@@ -89,11 +89,12 @@ void main() {
       return shape is RoundedRectangleBorder ? shape.side : null;
     }
 
-    /// Today's tile: the two-pixel border, and nothing else on the grid has
-    /// one. No tile is filled at all any more.
+    /// Today's tile: every border is a hairline now, so the mark is the
+    /// colour — every other tile keeps the ordinary outline. No tile is
+    /// filled at all any more.
     Finder markedTiles() => find.byWidgetPredicate((widget) {
       final side = sideOf(widget);
-      return side != null && side.width == 2;
+      return side != null && side.color != lightTheme.colorScheme.outlineVariant;
     });
 
     testWidgets('names the visible month, and renames it on a swipe', (
@@ -413,7 +414,6 @@ void main() {
 
       final quiet = chipStyle(tester, chip);
       expect(quiet.side?.color, lightTheme.colorScheme.outlineVariant);
-      expect(quiet.side?.width, isNot(2));
       expect(quiet.label?.color, lightTheme.colorScheme.onSurfaceVariant);
       expect(quiet.label?.fontWeight, FontWeight.normal);
 
@@ -422,7 +422,7 @@ void main() {
 
       final picked = chipStyle(tester, chip);
       expect(picked.side?.color, colors[ShiftType.notte]);
-      expect(picked.side?.width, 2);
+      expect(picked.side?.width, 1);
       expect(picked.label?.color, colors[ShiftType.notte]);
       expect(picked.label?.fontWeight, FontWeight.bold);
       expect(picked.filled, isFalse, reason: 'the colour is the whole signal');
@@ -444,7 +444,7 @@ void main() {
       // A weekday is not a Shift Type, so the accent stands in — same border,
       // same bold letter.
       expect(picked.side?.color, lightTheme.colorScheme.primary);
-      expect(picked.side?.width, 2);
+      expect(picked.side?.width, 1);
       expect(picked.label?.color, lightTheme.colorScheme.primary);
       expect(picked.label?.fontWeight, FontWeight.bold);
       expect(picked.filled, isFalse);

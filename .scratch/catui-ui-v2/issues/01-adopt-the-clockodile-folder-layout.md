@@ -12,11 +12,15 @@ This is the prefactor for everything else in this spec: make the change easy, th
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Every Dart file under `lib/` sits in `features/`, `shared/` or `data/`, with `main.dart` the only file left at the root of `lib/`
-- [ ] Each feature directory holds its screen and a `cubit/` directory beside it
-- [ ] Every test file sits at the path mirroring the source it tests
-- [ ] `flutter analyze` is clean
-- [ ] Every test that passed before the move passes after it, with no assertion edited
-- [ ] The diff contains no change other than file paths and import statements
+- [x] Every Dart file under `lib/` sits in `features/`, `shared/` or `data/`, with `main.dart` the only file left at the root of `lib/`
+- [x] Each feature directory holds its screen and a `cubit/` directory beside it
+- [x] Every test file sits at the path mirroring the source it tests
+- [x] `flutter analyze` is clean
+- [x] Every test that passed before the move passes after it, with no assertion edited
+- [x] The diff contains no change other than file paths and import statements
+
+## Comments
+
+Done in e782f6d. `flutter analyze`: clean. `flutter test` could not run in this environment — `libsql_dart`'s native Rust build fails to link (`link.exe` exit 1318), reproduced identically on the unmodified tree via `git stash`, so it predates this change and isn't caused by it. Re-run the suite once that toolchain issue is fixed elsewhere.

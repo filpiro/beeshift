@@ -431,7 +431,7 @@ class _DayCellView extends StatelessWidget {
               // slab of accent across the face: the Shift Code inside stays
               // the thing you read, and the border is only how you find it.
               side: highlighted
-                  ? BorderSide(color: shiftColor, width: 2)
+                  ? BorderSide(color: shiftColor)
                   : BorderSide(color: theme.colorScheme.outlineVariant),
             ),
           ),
@@ -443,8 +443,8 @@ class _DayCellView extends StatelessWidget {
               // read off it — so it stays small and gets out of the corner
               // the Shift Code wants.
               Positioned(
-                top: 2,
-                right: 4,
+                top: 6,
+                right: 6,
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
@@ -457,9 +457,12 @@ class _DayCellView extends StatelessWidget {
               ),
               if (shift != null)
                 Align(
-                  alignment: Alignment.centerLeft,
+                  alignment: Alignment.bottomLeft,
                   child: Padding(
-                    padding: const EdgeInsets.only(left: 4),
+                    // The day number sits 4px off a ~12px label; the Shift Code
+                    // is drawn twice that size, so it sits twice as far off the
+                    // corner and the two insets read as the same gap.
+                    padding: const EdgeInsets.only(left: 8, bottom: 4),
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
@@ -468,9 +471,9 @@ class _DayCellView extends StatelessWidget {
                         // Italian name is what is spoken — colour says
                         // nothing out loud, and neither does a bare `N`.
                         semanticsLabel: shift.label,
-                        style: theme.textTheme.headlineSmall?.copyWith(
+                        style: theme.textTheme.titleLarge?.copyWith(
                           color: shiftColor,
-                          fontWeight: highlighted ? FontWeight.bold : null,
+                          fontWeight: highlighted ? FontWeight(900) : null,
                         ),
                       ),
                     ),

@@ -203,13 +203,12 @@ void main() {
 
     final picked = styleOf(ShiftType.notte.code);
     expect(picked.side?.resolve({})?.color, colors[ShiftType.notte]);
-    expect(picked.side?.resolve({})?.width, 2);
+    expect(picked.side?.resolve({})?.width, 1);
     expect(picked.textStyle?.resolve({})?.fontWeight, FontWeight.bold);
     expect(picked.foregroundColor?.resolve({}), colors[ShiftType.notte]);
 
     final quiet = styleOf(ShiftType.riposo.code);
     expect(quiet.side?.resolve({})?.color, theme.colorScheme.outlineVariant);
-    expect(quiet.side?.resolve({})?.width, isNot(2));
     expect(quiet.textStyle?.resolve({})?.fontWeight, FontWeight.normal);
     expect(
       quiet.foregroundColor?.resolve({}),
