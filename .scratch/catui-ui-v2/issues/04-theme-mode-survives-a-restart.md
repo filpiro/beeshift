@@ -8,11 +8,11 @@ With nothing stored, the mode is the system's, which is what a fresh install get
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Choosing dark, closing the app and reopening it gives a dark app
-- [ ] The same holds for light, and for system
-- [ ] A fresh install with nothing stored follows the phone's setting
-- [ ] Nothing about the theme choice reaches the database or the other device
-- [ ] Choosing a mode still applies instantly, with no confirmation step
-- [ ] The theme cubit is tested directly: the default with nothing stored, a stored value winning at construction, and setting a mode writing it
+- [x] Choosing dark, closing the app and reopening it gives a dark app
+- [x] The same holds for light, and for system
+- [x] A fresh install with nothing stored follows the phone's setting
+- [x] Nothing about the theme choice reaches the database or the other device
+- [x] Choosing a mode still applies instantly, with no confirmation step
+- [x] The theme cubit is tested directly: the default with nothing stored, a stored value winning at construction, and setting a mode writing it

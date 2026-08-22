@@ -5,12 +5,18 @@ import 'package:beeshift/main.dart';
 import 'package:beeshift/shared/shift_type.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/fake_shifts_repository.dart';
 
 /// The one failure with no graceful degradation: without the database there is
 /// no app, so it takes the whole screen and offers the only action that helps.
 void main() {
+  // MainApp builds a real ThemeCubit, which reads SharedPreferences on
+  // construction — these tests never care about theme, but the channel
+  // still needs a mock backing it.
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   _firstLaunch();
 
   testWidgets('no bar over the opening spinner', (tester) async {

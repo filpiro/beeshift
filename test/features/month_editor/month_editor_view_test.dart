@@ -1,4 +1,5 @@
 import 'package:beeshift/features/calendar/cubit/calendar_cubit.dart';
+import 'package:beeshift/features/settings/cubit/theme_cubit.dart';
 import 'package:beeshift/features/shell/shell_view.dart';
 import 'package:beeshift/shared/shift_type.dart';
 import 'package:flutter/material.dart';
@@ -24,12 +25,14 @@ void main() {
     await calendar.load();
     await tester.pumpWidget(
       MaterialApp(
-        home: BlocProvider.value(
-          value: calendar,
-          child: ShellPage(
-            repository: repository,
-            themeMode: ValueNotifier(ThemeMode.system),
-          ),
+        home: MultiBlocProvider(
+          providers: [
+            BlocProvider<CalendarCubit>.value(value: calendar),
+            BlocProvider<ThemeCubit>(
+              create: (_) => ThemeCubit(read: () async => null, write: (_) async {}),
+            ),
+          ],
+          child: ShellPage(repository: repository),
         ),
       ),
     );

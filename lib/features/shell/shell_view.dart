@@ -14,16 +14,10 @@ import '../settings/settings_view.dart';
 /// `IndexedStack`: switching is `setState`, and both keep their state for
 /// free. There is no router — see ADR 0004.
 class ShellPage extends StatefulWidget {
-  const ShellPage({
-    super.key,
-    required this.repository,
-    required this.themeMode,
-  });
+  const ShellPage({super.key, required this.repository});
 
   /// Handed on to the Month Editor, exactly as the Calendar used to.
   final ShiftsRepository repository;
-
-  final ValueNotifier<ThemeMode> themeMode;
 
   @override
   State<ShellPage> createState() => _ShellPageState();
@@ -44,7 +38,7 @@ class _ShellPageState extends State<ShellPage> {
             index: _index,
             children: [
               const CalendarPage(),
-              SettingsPage(themeMode: widget.themeMode),
+              const SettingsPage(),
             ],
           ),
           Align(

@@ -1,5 +1,6 @@
 import 'package:beeshift/features/calendar/cubit/calendar_cubit.dart';
 import 'package:beeshift/features/month_editor/month_editor_view.dart';
+import 'package:beeshift/features/settings/cubit/theme_cubit.dart';
 import 'package:beeshift/features/shell/shell_view.dart';
 import 'package:beeshift/shared/shift_type.dart';
 import 'package:flutter/material.dart';
@@ -14,6 +15,9 @@ import '../../data/fake_shifts_repository.dart';
 void main() {
   late FakeShiftsRepository repository;
 
+  ThemeCubit fakeThemeCubit() =>
+      ThemeCubit(read: () async => null, write: (_) async {});
+
   Future<void> pumpShell(
     WidgetTester tester, {
     Map<String, ShiftType> shifts = const {},
@@ -25,12 +29,12 @@ void main() {
     await cubit.load();
     await tester.pumpWidget(
       MaterialApp(
-        home: BlocProvider.value(
-          value: cubit,
-          child: ShellPage(
-            repository: repository,
-            themeMode: ValueNotifier(ThemeMode.system),
-          ),
+        home: MultiBlocProvider(
+          providers: [
+            BlocProvider<CalendarCubit>.value(value: cubit),
+            BlocProvider<ThemeCubit>(create: (_) => fakeThemeCubit()),
+          ],
+          child: ShellPage(repository: repository),
         ),
       ),
     );
@@ -149,12 +153,12 @@ void main() {
     final cubit = CalendarCubit(repository, clock: () => DateTime(2026, 2, 15));
     await tester.pumpWidget(
       MaterialApp(
-        home: BlocProvider.value(
-          value: cubit,
-          child: ShellPage(
-            repository: repository,
-            themeMode: ValueNotifier(ThemeMode.system),
-          ),
+        home: MultiBlocProvider(
+          providers: [
+            BlocProvider<CalendarCubit>.value(value: cubit),
+            BlocProvider<ThemeCubit>(create: (_) => fakeThemeCubit()),
+          ],
+          child: ShellPage(repository: repository),
         ),
       ),
     );
