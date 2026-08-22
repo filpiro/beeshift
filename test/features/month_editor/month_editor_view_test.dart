@@ -1,6 +1,7 @@
 import 'package:beeshift/features/calendar/cubit/calendar_cubit.dart';
 import 'package:beeshift/features/settings/cubit/theme_cubit.dart';
 import 'package:beeshift/features/shell/shell_view.dart';
+import 'package:beeshift/shared/shift_colors.dart';
 import 'package:beeshift/shared/shift_type.dart';
 import 'package:beeshift/shared/theme.dart';
 import 'package:beeshift/shared/widgets/equal_row_segmented.dart';
@@ -110,6 +111,20 @@ void main() {
       );
     }
 
+    // Which one is picked is said out loud too, not left to the colour: the
+    // whole design leans on hue now, so the spoken state is what keeps it
+    // honest for anyone who cannot see it.
+    expect(
+      tester.getSemantics(find.bySemanticsLabel(ShiftType.riposo.label).first),
+      isSemantics(isSelected: false),
+    );
+    await tester.tap(find.text(ShiftType.riposo.code).first);
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSemantics(find.bySemanticsLabel(ShiftType.riposo.label).first),
+      isSemantics(isSelected: true),
+    );
+
     // One row, and a target you can hit: the six codes of the first day share
     // a centre line, and the control they sit in is at least 48dp tall.
     final firstDay = find.byType(EqualRowSegmented<ShiftType>).first;
@@ -161,6 +176,50 @@ void main() {
     expect(controls.first.selected, ShiftType.notte);
     // 2 February has nothing recorded: nothing selected is a real state.
     expect(controls.elementAt(1).selected, isNull);
+  });
+
+  testWidgets('a picked choice is a Shift Colour border and a bold letter, '
+      'with no fill', (tester) async {
+    await pumpCalendar(tester, shifts: {'2026-02-01': ShiftType.notte});
+    await openEditor(tester);
+    final theme = Theme.of(tester.element(find.text('Salva')));
+    final colors = theme.extension<ShiftColors>()!;
+
+    /// The style the first day's given code is drawn with.
+    ButtonStyle styleOf(String code) => tester
+        .widget<OutlinedButton>(
+          find
+              .ancestor(
+                of: find.text(code),
+                matching: find.byType(OutlinedButton),
+              )
+              .first,
+        )
+        .style!;
+
+    // Every choice is outlined — nothing is a filled face any more, which is
+    // what makes the colour the whole signal.
+    expect(find.byType(FilledButton), findsNothing);
+
+    final picked = styleOf(ShiftType.notte.code);
+    expect(picked.side?.resolve({})?.color, colors[ShiftType.notte]);
+    expect(picked.side?.resolve({})?.width, 2);
+    expect(picked.textStyle?.resolve({})?.fontWeight, FontWeight.bold);
+    expect(picked.foregroundColor?.resolve({}), colors[ShiftType.notte]);
+
+    final quiet = styleOf(ShiftType.riposo.code);
+    expect(quiet.side?.resolve({})?.color, theme.colorScheme.outlineVariant);
+    expect(quiet.side?.resolve({})?.width, isNot(2));
+    expect(quiet.textStyle?.resolve({})?.fontWeight, FontWeight.normal);
+    expect(
+      quiet.foregroundColor?.resolve({}),
+      theme.colorScheme.onSurfaceVariant,
+    );
+    // The same heading-sized letter the Filter's chips take.
+    expect(
+      picked.textStyle?.resolve({})?.fontSize,
+      theme.textTheme.titleMedium?.fontSize,
+    );
   });
 
   testWidgets('tapping a code writes nothing until Save', (tester) async {

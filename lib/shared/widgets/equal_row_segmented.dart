@@ -1,16 +1,28 @@
 import 'package:catui/catui.dart';
 import 'package:flutter/material.dart';
 
+import 'picked_style.dart';
+
 /// One choice in an [EqualRowSegmented]: what selects it, what it draws, and
 /// what a screen reader says instead — the drawn label and the spoken one are
 /// allowed to differ, same trade as [CatSegmented].
 class RowSegment<T> {
-  const RowSegment({required this.value, required this.code, this.label});
+  const RowSegment({
+    required this.value,
+    required this.code,
+    required this.color,
+    this.label,
+  });
 
   final T value;
 
   /// What is drawn on the button.
   final String code;
+
+  /// What this segment turns when it is picked — its own colour, decided by
+  /// the caller. The widget only draws it: which colour belongs to which
+  /// value is not something a shared control can know.
+  final Color color;
 
   /// What a screen reader announces. Falls back to [code] when not given.
   final String? label;
@@ -44,31 +56,45 @@ class EqualRowSegmented<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Row(
       children: [
         for (final (index, segment) in segments.indexed) ...[
           if (index > 0) const SizedBox(width: AppTokens.segmentGap),
-          Expanded(
-            child: segment.value == selected
-                ? FilledButton(
-                    style: _style,
-                    onPressed: () => onChanged(segment.value),
-                    child: Text(segment.code, semanticsLabel: segment.label),
-                  )
-                : OutlinedButton(
-                    style: _style,
-                    onPressed: () => onChanged(segment.value),
-                    child: Text(segment.code, semanticsLabel: segment.label),
-                  ),
-          ),
+          Expanded(child: _button(theme, segment)),
         ],
       ],
     );
   }
 
-  /// Only the row's own constraint: tall enough to be a real tap target.
-  /// Width is [Expanded]'s job, not the button's.
-  static const _style = ButtonStyle(
-    minimumSize: WidgetStatePropertyAll(Size(0, 48)),
-  );
+  /// Outlined either way: the picked one says so with its border and its
+  /// letter, not with a filled face — see [pickedStyle].
+  Widget _button(ThemeData theme, RowSegment<T> segment) {
+    final isSelected = segment.value == selected;
+    final picked = pickedStyle(
+      theme,
+      color: segment.color,
+      selected: isSelected,
+    );
+    return OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        // Only the row's own constraint: tall enough to be a real tap target.
+        // Width is [Expanded]'s job, not the button's.
+        minimumSize: const Size(0, 48),
+        side: picked.side,
+        textStyle: picked.labelStyle,
+        foregroundColor: picked.labelStyle?.color,
+      ),
+      onPressed: () => onChanged(segment.value),
+      // Said out loud, because nothing else says it: an outlined button
+      // carries no selected flag of its own, and now that the fill is gone the
+      // colour is the only thing announcing it on screen. Inside the button
+      // rather than around it, so it lands on the node the button already
+      // publishes instead of a second one beside it.
+      child: Semantics(
+        selected: isSelected,
+        child: Text(segment.code, semanticsLabel: segment.label),
+      ),
+    );
+  }
 }

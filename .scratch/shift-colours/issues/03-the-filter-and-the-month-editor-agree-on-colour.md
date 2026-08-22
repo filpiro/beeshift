@@ -14,16 +14,16 @@ Every letter still announces its full Italian name and its selected state out lo
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A selected Shift chip draws no fill, a two-pixel Shift Colour border, and its Shift Code bold in that colour
-- [ ] A selected Month Editor choice draws exactly the same way
-- [ ] Unselected in both places is a quiet outline and a normal-weight muted letter
-- [ ] The Shift Code is larger than before in both places
-- [ ] The weekday chips take the app's accent in the same shape
-- [ ] Both filter groups keep their headings, stay multi-select, and still show no check marks
-- [ ] The OR-within, AND-across rule and the Empty-day rule are unchanged
-- [ ] The Month Editor still fits six choices on one line, still cannot clear a day, and still saves the month in one action
-- [ ] Every letter still announces its Italian name and its selected state
-- [ ] The Filter and the Month Editor remain separate widgets
-- [ ] Analyze is clean and the whole suite passes with no behavioural assertion rewritten
+- [x] A selected Shift chip draws no fill, a two-pixel Shift Colour border, and its Shift Code bold in that colour
+- [x] A selected Month Editor choice draws exactly the same way
+- [x] Unselected in both places is a quiet outline and a normal-weight muted letter
+- [x] The Shift Code is larger than before in both places
+- [x] The weekday chips take the app's accent in the same shape
+- [x] Both filter groups keep their headings, stay multi-select, and still show no check marks
+- [x] The OR-within, AND-across rule and the Empty-day rule are unchanged
+- [x] The Month Editor still fits six choices on one line, still cannot clear a day, and still saves the month in one action
+- [x] Every letter still announces its Italian name and its selected state
+- [x] The Filter and the Month Editor remain separate widgets
+- [x] Analyze is clean and the whole suite passes with no behavioural assertion rewritten

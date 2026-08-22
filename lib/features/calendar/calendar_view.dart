@@ -8,6 +8,7 @@ import '../../shared/italian_dates.dart';
 import '../../shared/shift_colors.dart';
 import '../../shared/shift_type.dart';
 import '../../shared/widgets/floating_bottom_bar.dart';
+import '../../shared/widgets/picked_style.dart';
 import 'cubit/calendar_cubit.dart';
 
 /// The Calendar: the Data Window's two months as a carousel. Every decision it
@@ -208,6 +209,8 @@ class _FilterControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<CalendarCubit>();
+    final theme = Theme.of(context);
+    final colors = ShiftColors.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
       child: Column(
@@ -219,15 +222,14 @@ class _FilterControls extends StatelessWidget {
             heading: 'Filtra per turno',
             children: [
               for (final type in ShiftType.values)
-                FilterChip(
+                _FilterLetter(
                   // The letter is drawn, the Italian name is spoken — the same
                   // trade the Month Editor's segments make.
-                  label: Text(type.code, semanticsLabel: type.label),
+                  code: type.code,
+                  label: type.label,
+                  color: colors[type],
                   selected: shiftFilter.contains(type),
-                  // A tick beside a one-letter label doubles the chip's width
-                  // and says nothing the fill has not already said.
-                  showCheckmark: false,
-                  onSelected: (_) => cubit.toggleShift(type),
+                  onSelected: () => cubit.toggleShift(type),
                 ),
             ],
           ),
@@ -236,19 +238,68 @@ class _FilterControls extends StatelessWidget {
             heading: 'Filtra per giorno',
             children: [
               for (var day = DateTime.monday; day <= DateTime.sunday; day++)
-                FilterChip(
-                  label: Text(
-                    weekdayNames[day][0],
-                    semanticsLabel: weekdayNames[day],
-                  ),
+                _FilterLetter(
+                  code: weekdayNames[day][0],
+                  label: weekdayNames[day],
+                  // A weekday is not a Shift Type and has no Shift Colour, so
+                  // the app's accent stands in — same shape, same border,
+                  // yellow rather than a hue that would claim to be a Shift.
+                  color: theme.colorScheme.primary,
                   selected: weekdayFilter.contains(day),
-                  showCheckmark: false,
-                  onSelected: (_) => cubit.toggleWeekday(day),
+                  onSelected: () => cubit.toggleWeekday(day),
                 ),
             ],
           ),
         ],
       ),
+    );
+  }
+}
+
+/// One letter in the Filter, drawn the way the Month Editor draws its
+/// choices — the shared idiom in [pickedStyle], not a shared widget: this one
+/// wraps and multi-selects, and a control covering both would carry two
+/// behaviours to serve neither.
+class _FilterLetter extends StatelessWidget {
+  const _FilterLetter({
+    required this.code,
+    required this.label,
+    required this.color,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  /// The letter that is drawn.
+  final String code;
+
+  /// The Italian name, which is what a screen reader says — and, for the
+  /// weekdays, the only thing telling the two `M`s apart.
+  final String label;
+
+  /// What this letter turns when it is picked.
+  final Color color;
+
+  final bool selected;
+
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final picked = pickedStyle(theme, color: color, selected: selected);
+    return FilterChip(
+      label: Text(code, semanticsLabel: label),
+      selected: selected,
+      // No fill either way: the border and the letter carry it, so the two
+      // states differ by colour and weight alone.
+      backgroundColor: Colors.transparent,
+      selectedColor: Colors.transparent,
+      side: picked.side,
+      labelStyle: picked.labelStyle,
+      // A tick beside a one-letter label doubles the chip's width and says
+      // nothing the border has not already said.
+      showCheckmark: false,
+      onSelected: (_) => onSelected(),
     );
   }
 }

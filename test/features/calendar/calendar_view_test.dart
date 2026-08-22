@@ -387,6 +387,93 @@ void main() {
       expect(opacityOf(tester, '15'), 1);
     });
 
+    /// How a chip is drawn: its border, its label, and whether anything
+    /// fills its face.
+    ({BorderSide? side, TextStyle? label, bool filled}) chipStyle(
+      WidgetTester tester,
+      Finder chip,
+    ) {
+      final widget = tester.widget<FilterChip>(chip);
+      final side = widget.side;
+      return (
+        side: side is BorderSide ? side : null,
+        label: widget.labelStyle,
+        // Both faces transparent, so neither state is ever a fill.
+        filled:
+            widget.backgroundColor != Colors.transparent ||
+            widget.selectedColor != Colors.transparent,
+      );
+    }
+
+    testWidgets('a picked Shift chip is a Shift Colour border and a bold '
+        'letter, with no fill', (tester) async {
+      await pumpFiltered(tester);
+      final colors = lightTheme.extension<ShiftColors>()!;
+      final chip = chipIn(shiftGroup, ShiftType.notte.code);
+
+      final quiet = chipStyle(tester, chip);
+      expect(quiet.side?.color, lightTheme.colorScheme.outlineVariant);
+      expect(quiet.side?.width, isNot(2));
+      expect(quiet.label?.color, lightTheme.colorScheme.onSurfaceVariant);
+      expect(quiet.label?.fontWeight, FontWeight.normal);
+
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+
+      final picked = chipStyle(tester, chip);
+      expect(picked.side?.color, colors[ShiftType.notte]);
+      expect(picked.side?.width, 2);
+      expect(picked.label?.color, colors[ShiftType.notte]);
+      expect(picked.label?.fontWeight, FontWeight.bold);
+      expect(picked.filled, isFalse, reason: 'the colour is the whole signal');
+      // A tick beside a one-letter label doubles the chip's width and says
+      // nothing the border has not already said.
+      expect(tester.widget<FilterChip>(chip).showCheckmark, isFalse);
+    });
+
+    testWidgets('a picked weekday chip takes the accent in the same shape', (
+      tester,
+    ) async {
+      await pumpFiltered(tester);
+      final chip = chipIn(weekdayGroup, 'L');
+
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+
+      final picked = chipStyle(tester, chip);
+      // A weekday is not a Shift Type, so the accent stands in — same border,
+      // same bold letter.
+      expect(picked.side?.color, lightTheme.colorScheme.primary);
+      expect(picked.side?.width, 2);
+      expect(picked.label?.color, lightTheme.colorScheme.primary);
+      expect(picked.label?.fontWeight, FontWeight.bold);
+      expect(picked.filled, isFalse);
+    });
+
+    testWidgets('the letters are larger than Material would draw them', (
+      tester,
+    ) async {
+      await pumpFiltered(tester);
+
+      // These are the letters read off the real rota, so they take the
+      // heading-sized style rather than the default chip label. Read off the
+      // tree, not off `lightTheme`: the raw ThemeData leaves the sizes to the
+      // typography, which only resolves once it is mounted.
+      final theme = Theme.of(tester.element(find.byType(CalendarPage)));
+      expect(
+        chipStyle(
+          tester,
+          chipIn(shiftGroup, ShiftType.notte.code),
+        ).label?.fontSize,
+        theme.textTheme.titleMedium?.fontSize,
+      );
+      expect(
+        theme.textTheme.titleMedium!.fontSize!,
+        greaterThan(theme.textTheme.labelLarge!.fontSize!),
+        reason: 'larger than the chip label Material would have used',
+      );
+    });
+
     testWidgets('the selection survives a swipe', (tester) async {
       // The controls sit outside the carousel, so paging is not a reason to
       // forget what was chosen.

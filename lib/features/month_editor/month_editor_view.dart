@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/shifts_repository.dart';
 import '../../shared/italian_dates.dart';
+import '../../shared/shift_colors.dart';
 import '../../shared/shift_type.dart';
 import '../../shared/widgets/equal_row_segmented.dart';
 import 'cubit/month_editor_cubit.dart';
@@ -78,6 +79,7 @@ class _DayRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final editor = context.read<MonthEditorCubit>();
+    final colors = ShiftColors.of(context);
     return Padding(
       // No divider closing the row: once the rows breathe, a line between two
       // outlined controls is ink competing with the outlines.
@@ -96,7 +98,14 @@ class _DayRow extends StatelessWidget {
           EqualRowSegmented<ShiftType>(
             segments: [
               for (final shift in ShiftType.values)
-                RowSegment(value: shift, code: shift.code, label: shift.label),
+                RowSegment(
+                  value: shift,
+                  code: shift.code,
+                  // Picked turns the Shift Colour, so the editor and the
+                  // Calendar's tiles say the same thing in the same hue.
+                  color: colors[shift],
+                  label: shift.label,
+                ),
             ],
             selected: selected,
             // Every tap, selected code included, sets the day to that Shift
