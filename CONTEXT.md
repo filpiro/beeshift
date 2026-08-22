@@ -68,7 +68,7 @@ What holds the app's screens once the database is open: whichever destination is
 _Avoid_: home, navigator, tabs, container
 
 **Bottom Bar**:
-The Shell's one navigation control. Two buttons: one that goes to Settings, one that opens the Month Editor. The first is a destination and is drawn active while Settings is showing; the second is an action and is never active. It is drawn over the Calendar, which is why the Calendar keeps a strip clear at the bottom.
+The Shell's one navigation control. Three buttons, left to right: Calendario, Modifica, Impostazioni. The two destinations flank the one action — each destination is drawn active while its screen is showing, and tapping the one already active does nothing; Modifica is an action and is never active. It floats clear of whatever the system reserves at the bottom edge, and is drawn over the Calendar, which is why the Calendar keeps a strip clear at the bottom.
 _Avoid_: navbar, tab bar, toolbar, dock
 
 **Theme Mode**:

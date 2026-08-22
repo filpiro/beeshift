@@ -68,6 +68,9 @@ class _CalendarPageState extends State<CalendarPage>
         // over — see ADR 0004.
         return Scaffold(
           body: SafeArea(
+            // Not at the bottom: `barReserve` already measures from the raw
+            // edge, and a SafeArea under it would take the inset off twice.
+            bottom: false,
             child: switch (grids) {
               // A first load that failed: the spinner would otherwise spin for
               // as long as the app is open, saying nothing.
@@ -136,7 +139,7 @@ class _CalendarPageState extends State<CalendarPage>
             // The floating bar overlaps whatever is under it, and on a short
             // screen the grid reaches the bottom. Reserved here so the last
             // row stops above it rather than under it.
-            padding: const EdgeInsets.only(bottom: barReserve),
+            padding: EdgeInsets.only(bottom: barReserve(context)),
             child: RefreshIndicator(
               onRefresh: _pullToRefresh,
               // The pull comes from inside a page, so it reaches here one

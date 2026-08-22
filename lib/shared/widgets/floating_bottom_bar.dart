@@ -1,13 +1,26 @@
 import 'package:flutter/material.dart';
 
-/// Space the Calendar reserves under its grid for [FloatingBottomBar]: the
-/// bar's own height, the margin below it, and a further gap so the last row
-/// is not touching it. Kept alongside the bar rather than guessed at from
-/// the caller's side.
-const barReserve = 80.0;
+/// Gap between the bar and whatever the system reserves at the bottom edge —
+/// a gesture bar, a home indicator. Cleared with [barClearance], never used
+/// raw: on such a phone the margin alone puts the bar under the furniture.
+const barBottomMargin = 24.0;
 
-/// Gap between the bar and the bottom of the screen.
-const barBottomMargin = 16.0;
+/// The bar's own height plus a gap, so the last row of the Calendar's grid
+/// stops above the bar rather than touching it.
+const _barHeightAndGap = 64.0;
+
+/// How far above the bottom of the screen the bar floats: the system's
+/// reserved strip, plus our own margin over it.
+double barClearance(BuildContext context) =>
+    MediaQuery.viewPaddingOf(context).bottom + barBottomMargin;
+
+/// Space the Calendar reserves under its grid for [FloatingBottomBar]. Kept
+/// alongside the bar rather than guessed at from the caller's side, and
+/// measured from the raw bottom edge off the same [barClearance] the bar
+/// uses — one reading of the system inset, so the two cannot drift apart.
+/// This is why the Calendar keeps `SafeArea` off its bottom.
+double barReserve(BuildContext context) =>
+    barClearance(context) + _barHeightAndGap;
 
 /// One button in a [FloatingBottomBar]: a destination, drawn active while its
 /// screen is showing, or an action — pass [active]: false and it never lights

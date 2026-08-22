@@ -44,19 +44,19 @@ class _ShellPageState extends State<ShellPage> {
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
-              padding: const EdgeInsets.only(bottom: barBottomMargin),
+              padding: EdgeInsets.only(bottom: barClearance(context)),
               child: BlocBuilder<CalendarCubit, CalendarState>(
                 builder: (context, state) => FloatingBottomBar(
+                  // Each destination is a plain "go there" — tapping the
+                  // active one is inert, so a button means one place and
+                  // nothing else. The old Impostazioni self-toggle was the
+                  // only way back, and nobody found it.
                   destinations: [
                     BarDestination(
-                      icon: LucideIcons.settings,
-                      label: 'Impostazioni',
-                      active: _index == _settings,
-                      onPressed: () => setState(
-                        () => _index = _index == _settings
-                            ? _calendar
-                            : _settings,
-                      ),
+                      icon: LucideIcons.calendarDays,
+                      label: 'Calendario',
+                      active: _index == _calendar,
+                      onPressed: () => setState(() => _index = _calendar),
                     ),
                     BarDestination(
                       icon: LucideIcons.pencil,
@@ -66,6 +66,12 @@ class _ShellPageState extends State<ShellPage> {
                       onPressed: state.grids == null
                           ? null
                           : () => _openEditor(context),
+                    ),
+                    BarDestination(
+                      icon: LucideIcons.settings,
+                      label: 'Impostazioni',
+                      active: _index == _settings,
+                      onPressed: () => setState(() => _index = _settings),
                     ),
                   ],
                 ),

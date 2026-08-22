@@ -3,6 +3,7 @@ import 'package:beeshift/features/month_editor/month_editor_view.dart';
 import 'package:beeshift/features/settings/cubit/theme_cubit.dart';
 import 'package:beeshift/features/shell/shell_view.dart';
 import 'package:beeshift/shared/shift_type.dart';
+import 'package:beeshift/shared/widgets/floating_bottom_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,6 +23,7 @@ void main() {
     WidgetTester tester, {
     Map<String, ShiftType> shifts = const {},
     bool failFirstLoad = false,
+    double bottomInset = 0,
   }) async {
     repository = FakeShiftsRepository(shifts);
     if (failFirstLoad) repository.failing.add('fetchRange');
@@ -29,12 +31,22 @@ void main() {
     await cubit.load();
     await tester.pumpWidget(
       MaterialApp(
-        home: MultiBlocProvider(
-          providers: [
-            BlocProvider<CalendarCubit>.value(value: cubit),
-            BlocProvider<ThemeCubit>(create: (_) => fakeThemeCubit()),
-          ],
-          child: ShellPage(repository: repository),
+        home: Builder(
+          // A gesture bar or a home indicator, faked onto the real
+          // MediaQuery rather than over it: replacing it wholesale would
+          // zero the screen size for everything below.
+          builder: (context) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(viewPadding: EdgeInsets.only(bottom: bottomInset)),
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider<CalendarCubit>.value(value: cubit),
+                BlocProvider<ThemeCubit>(create: (_) => fakeThemeCubit()),
+              ],
+              child: ShellPage(repository: repository),
+            ),
+          ),
         ),
       ),
     );
@@ -53,15 +65,22 @@ void main() {
     expect(find.byType(FloatingActionButton), findsNothing);
   });
 
-  testWidgets('a pill hugs the two buttons, Impostazioni and Modifica, both '
-      'named to a screen reader', (tester) async {
+  testWidgets('a pill hugs three buttons — Calendario, Modifica, '
+      'Impostazioni — each named to a screen reader', (tester) async {
     final handle = tester.ensureSemantics();
     await pumpShell(tester);
 
-    expect(find.byTooltip('Impostazioni'), findsOne);
-    expect(find.byTooltip('Modifica'), findsOne);
-    expect(find.bySemanticsLabel('Impostazioni'), findsOne);
-    expect(find.bySemanticsLabel('Modifica'), findsOne);
+    for (final label in ['Calendario', 'Modifica', 'Impostazioni']) {
+      expect(find.byTooltip(label), findsOne);
+      expect(find.bySemanticsLabel(label), findsOne);
+    }
+
+    // Left to right: the two destinations flank the one action.
+    final order = ['Calendario', 'Modifica', 'Impostazioni']
+        .map((l) => tester.getCenter(find.byKey(Key(l))).dx)
+        .toList();
+    expect(order[0], lessThan(order[1]));
+    expect(order[1], lessThan(order[2]));
 
     // A pill hugging its buttons, not a bar spanning the screen.
     final pill = tester.getRect(find.byType(Material).last);
@@ -69,9 +88,10 @@ void main() {
     handle.dispose();
   });
 
-  testWidgets('Impostazioni is active on Settings, and returns to the '
-      'Calendar when tapped again', (tester) async {
+  testWidgets('one destination is active at a time, and Calendario is the '
+      'way back from Settings', (tester) async {
     await pumpShell(tester);
+    expect(activeAt(tester, 'Calendario'), isTrue);
     expect(activeAt(tester, 'Impostazioni'), isFalse);
     expect(find.text('Febbraio 2026'), findsOne);
 
@@ -79,14 +99,58 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(activeAt(tester, 'Impostazioni'), isTrue);
+    expect(activeAt(tester, 'Calendario'), isFalse);
     expect(find.text('Impostazioni'), findsOne, reason: "Settings' app bar");
     expect(find.text('Febbraio 2026'), findsNothing);
 
+    await tester.tap(find.byTooltip('Calendario'));
+    await tester.pumpAndSettle();
+
+    expect(activeAt(tester, 'Calendario'), isTrue);
+    expect(activeAt(tester, 'Impostazioni'), isFalse);
+    expect(find.text('Febbraio 2026'), findsOne);
+  });
+
+  testWidgets('tapping the destination already showing does nothing', (
+    tester,
+  ) async {
+    await pumpShell(tester);
+
+    await tester.tap(find.byTooltip('Calendario'));
+    await tester.pumpAndSettle();
+    expect(find.text('Febbraio 2026'), findsOne, reason: 'still the Calendar');
+
+    await tester.tap(find.byTooltip('Impostazioni'));
+    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Impostazioni'));
     await tester.pumpAndSettle();
 
-    expect(activeAt(tester, 'Impostazioni'), isFalse);
-    expect(find.text('Febbraio 2026'), findsOne);
+    expect(
+      activeAt(tester, 'Impostazioni'),
+      isTrue,
+      reason: 'no self-toggle back to the Calendar',
+    );
+    expect(find.text('Febbraio 2026'), findsNothing);
+  });
+
+  testWidgets('the bar clears the system bottom inset, and the grid clears '
+      'the bar, with an inset and without', (tester) async {
+    for (final inset in [0.0, 48.0]) {
+      await pumpShell(tester, bottomInset: inset);
+
+      final screen = tester.getRect(find.byType(ShellPage));
+      final bar = tester.getRect(find.byType(FloatingBottomBar));
+      expect(
+        screen.bottom - bar.bottom,
+        moreOrLessEquals(inset + barBottomMargin),
+        reason: 'inset $inset: the system furniture is not shared',
+      );
+      expect(
+        tester.getRect(find.byType(PageView)).bottom,
+        lessThanOrEqualTo(bar.top),
+        reason: 'inset $inset: the last row of tiles stays visible',
+      );
+    }
   });
 
   testWidgets('coming back from Settings finds the same month and Filter', (
@@ -105,7 +169,7 @@ void main() {
 
     await tester.tap(find.byTooltip('Impostazioni'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Impostazioni'));
+    await tester.tap(find.byTooltip('Calendario'));
     await tester.pumpAndSettle();
 
     expect(
@@ -134,6 +198,11 @@ void main() {
     expect(find.text('Febbraio 2026'), findsOne, reason: "editor's app bar");
     expect(find.byTooltip('Modifica'), findsNothing, reason: 'bar covered');
     expect(find.byTooltip('Impostazioni'), findsNothing, reason: 'bar covered');
+    expect(
+      find.byTooltip('Calendario'),
+      findsNothing,
+      reason: 'no escape hatch out of unsaved work',
+    );
 
     await tester.tap(find.text(ShiftType.riposo.code).first);
     await tester.pumpAndSettle();
