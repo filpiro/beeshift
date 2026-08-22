@@ -85,9 +85,10 @@ class _BarButton extends StatelessWidget {
       onPressed: destination.onPressed,
       style: IconButton.styleFrom(
         shape: const StadiumBorder(),
-        backgroundColor: destination.active ? scheme.primary : null,
+        // The glyph alone carries "you are here" — a filled pill behind it
+        // read as a second bar inside the bar.
         foregroundColor: destination.active
-            ? scheme.onPrimary
+            ? scheme.primary
             : scheme.onSurfaceVariant,
       ),
       // The tooltip is a hint, not the accessible name — the glyph needs its

@@ -52,12 +52,15 @@ void main() {
     );
   }
 
-  bool activeAt(WidgetTester tester, String label) =>
-      tester
-          .widget<IconButton>(find.byKey(Key(label)))
-          .style
-          ?.backgroundColor !=
-      null;
+  /// Active is the accent on the glyph and nothing behind it — no pill, no
+  /// fill.
+  bool activeAt(WidgetTester tester, String label) {
+    final button = find.byKey(Key(label));
+    final style = tester.widget<IconButton>(button).style;
+    expect(style?.backgroundColor, isNull, reason: 'the icon carries it alone');
+    return style?.foregroundColor?.resolve({}) ==
+        Theme.of(tester.element(button)).colorScheme.primary;
+  }
 
   testWidgets('there is no floating edit button anywhere', (tester) async {
     await pumpShell(tester);
