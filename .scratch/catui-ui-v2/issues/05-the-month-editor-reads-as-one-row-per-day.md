@@ -14,15 +14,15 @@ Nothing about the screen's behaviour moves. The snapshot it opens with, the back
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] All six Shift Codes are on one row on a narrow phone, none clipped, nothing scrolling sideways
-- [ ] The six are equal width and fill the row
-- [ ] The chosen Shift Type is filled and the other five are outlined
-- [ ] Each choice draws its Shift Code and announces its Italian name
-- [ ] The day heading is visibly larger than before
-- [ ] There is clear vertical space between one day's row and the next, and no divider
-- [ ] Tapping the already-selected choice still leaves the day as it was — no day can return to "not entered yet"
-- [ ] Saving, failing to save, and leaving by the back button all behave exactly as before
-- [ ] `docs/UI/base.md` is deleted
-- [ ] The Month Editor's existing widget tests still pass, adjusted only where they named the widget that was replaced
+- [x] All six Shift Codes are on one row on a narrow phone, none clipped, nothing scrolling sideways
+- [x] The six are equal width and fill the row
+- [x] The chosen Shift Type is filled and the other five are outlined
+- [x] Each choice draws its Shift Code and announces its Italian name
+- [x] The day heading is visibly larger than before
+- [x] There is clear vertical space between one day's row and the next, and no divider
+- [x] Tapping the already-selected choice still leaves the day as it was — no day can return to "not entered yet"
+- [x] Saving, failing to save, and leaving by the back button all behave exactly as before
+- [x] `docs/UI/base.md` is deleted
+- [x] The Month Editor's existing widget tests still pass, adjusted only where they named the widget that was replaced

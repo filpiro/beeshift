@@ -2,6 +2,7 @@ import 'package:beeshift/features/calendar/cubit/calendar_cubit.dart';
 import 'package:beeshift/features/settings/cubit/theme_cubit.dart';
 import 'package:beeshift/features/shell/shell_view.dart';
 import 'package:beeshift/shared/shift_type.dart';
+import 'package:beeshift/shared/widgets/equal_row_segmented.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -108,7 +109,7 @@ void main() {
 
     // One row, and a target you can hit: the six codes of the first day share
     // a centre line, and the control they sit in is at least 48dp tall.
-    final firstDay = find.byType(SegmentedButton<ShiftType>).first;
+    final firstDay = find.byType(EqualRowSegmented<ShiftType>).first;
     expect(tester.getSize(firstDay).height, greaterThanOrEqualTo(48));
     final row = tester.getCenter(firstDay).dy;
     for (final shift in ShiftType.values) {
@@ -137,11 +138,11 @@ void main() {
 
     expect(
       tester
-          .widget<SegmentedButton<ShiftType>>(
-            find.byType(SegmentedButton<ShiftType>).first,
+          .widget<EqualRowSegmented<ShiftType>>(
+            find.byType(EqualRowSegmented<ShiftType>).first,
           )
           .selected,
-      {ShiftType.riposo},
+      ShiftType.riposo,
     );
   });
 
@@ -151,12 +152,12 @@ void main() {
     await pumpCalendar(tester, shifts: {'2026-02-01': ShiftType.notte});
     await openEditor(tester);
 
-    final controls = tester.widgetList<SegmentedButton<ShiftType>>(
-      find.byType(SegmentedButton<ShiftType>),
+    final controls = tester.widgetList<EqualRowSegmented<ShiftType>>(
+      find.byType(EqualRowSegmented<ShiftType>),
     );
-    expect(controls.first.selected, {ShiftType.notte});
+    expect(controls.first.selected, ShiftType.notte);
     // 2 February has nothing recorded: nothing selected is a real state.
-    expect(controls.elementAt(1).selected, isEmpty);
+    expect(controls.elementAt(1).selected, isNull);
   });
 
   testWidgets('tapping a code writes nothing until Save', (tester) async {
@@ -210,11 +211,11 @@ void main() {
       expect(find.byTooltip('Modifica'), findsNothing, reason: 'did not pop');
       expect(
         tester
-            .widget<SegmentedButton<ShiftType>>(
-              find.byType(SegmentedButton<ShiftType>).first,
+            .widget<EqualRowSegmented<ShiftType>>(
+              find.byType(EqualRowSegmented<ShiftType>).first,
             )
             .selected,
-        {ShiftType.riposo},
+        ShiftType.riposo,
       );
     });
 
