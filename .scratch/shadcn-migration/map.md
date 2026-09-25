@@ -1,6 +1,6 @@
 # Map: catui/Material → shadcn_flutter migration
 
-Status: open
+Status: done
 Created: 2026-09-20
 
 ## Destination
@@ -43,6 +43,7 @@ go through `pws -c ...` and carry `--dart-define-from-file=env.json`. See `CLAUD
 4. **Shift Colours freeze.** The six Catppuccin Mocha hues currently produced by
    `ShiftColors.forFlavor` become literal constants. The calendar keeps its present look.
    This removes the last functional reason to keep `catui`.
+   *Superseded by 07: shadcn palette, one table per brightness.*
 
 ## Decisions so far
 
@@ -54,25 +55,19 @@ go through `pws -c ...` and carry `--dart-define-from-file=env.json`. See `CLAUD
 
 - [03 — Prototype the month grid and day cell](issues/03-prototype-month-grid.md) — **The hand-rolled `_MonthGrid` / `_DayCellView` stay.** shadcn's `Calendar` exposes only `stateBuilder` returning a `DateState` (enabled/disabled/selected) — no day-cell builder, no per-day colour, nowhere for the Shift Code — and it exists to select dates, which the Calendar page never does. The swap is narrow: `AppTokens.radius`→shadcn radius, `outlineVariant`→`ColorScheme.border`, `primary`→the Amber accent, textTheme slots left to token mapping. **`density: Reduced` never reaches the cell** — its insets are literals over a `LayoutBuilder` side, and the cell has no gesture handling, so no tap target shrinks. **Every frozen hue gains ~22% contrast** on `darkSlate`'s `#020817` vs Mocha's `#1e1e2e`; weakest is secondo blue at 9.50:1. The Shift Colour paints the *letter* and today's *border*, not a slab behind the day number. [Prototype](https://claude.ai/artifact/VAfxwB38vcADAGjgFvAR1Q) is HTML, not Flutter — the map adds no dependency — so 02's "const map at all three call sites" is recorded in the spec, not demonstrated.
 
+- [04 — Prototype the shell](issues/04-prototype-shell-chrome.md) — **`FloatingBottomBar` stays**, reskinned to `card`/`border`/Amber tokens; shadcn `NavigationBar` is a flat full-width strip with no insets. **`barReserve` contract holds**: shadcn `Scaffold` never touches `viewPadding`; the bar stays in the Shell `Stack`, not `footers:` (that double-counts the inset). Settings/Month Editor use `headers: [AppBar, Divider]`, and their body `SafeArea` must be `top: false` — shadcn `AppBar` already takes the top inset. Calendar gets `headers: []`. Toast moves to `ToastLocation.topCenter`, overriding 02 (bottomLeft sits under the bar). [Prototype](https://claude.ai/artifact/SzSfXu8B5xt3JmukuXAJ7p).
+
+- [05 — Choose the control that replaces CatSegmented](issues/05-segmented-control.md) — Premise was stale: `CatSegmented` has one use (Settings Theme Mode); the Filter is `FilterChip`, and `EqualRowSegmented` is the Month Editor's. **Theme Mode → `Tabs(expand: true)`**, index ↔ `ThemeMode.values`. **Filter → `Toggle`, keeps coloured letters.** **`EqualRowSegmented` and `pickedStyle` both survive**; `pickedStyle` now returns one shadcn `ButtonStyle` (outline + Shift Colour foreground/border) shared by `Toggle` and `OutlineButton`.
+
+- [07 — What colour is a shift in Light mode?](issues/07-light-mode-shift-colours.md) — **Neither Latte nor Mocha: shadcn's own palette.** Orange / blue / violet / teal / green / pink; shade 300 in Dark, 700 in Light; all pass AA. `ShiftColors` becomes a class of two `const` maps with `of(context)` reading `Theme.of(context).brightness`. Replaces standing decision 4 and 01's single table. Accepted risk: `primo` orange sits near Amber.
+
+- [06 — Write the migration spec](issues/06-write-the-spec.md) — **[Spec](spec.md) locked; build tickets 08 → 10.** Fresh-install theme stays `system`. Overrides 05: the Filter is a `Button` + `pickedStyle`, because `Toggle` forces a filled style when on. Settings tabs map by an explicit list (enum order differs). Month Editor strips the top inset itself. Typography by nearest size.
+
+- [08 — Swap lib/ to shadcn_flutter](issues/08-swap-lib-to-shadcn.md) — **`lib/` is Material- and catui-free; `analyze lib` clean.** Four package deviations: `RefreshTrigger` only hears depth-0 scrolls, so it now wraps each `_MonthGrid` (spec §9 fallback, applied up front); `ButtonVariance.outline` fills at rest, so `pickedStyle` forces a transparent background; `withForegroundColor` reverts on hover/focus, so the bar pins those too; ghost's disabled colour equals idle, so the bar sets `disabledColor` to dim. UI tests still fail — ticket 09.
+
 ## Not yet specified
 
-- **Navigation and routing.** `ShellPage` swaps pages by index today. Whether shadcn's
-  page-route / tab-pane widgets change that shape is unknown until the shell is prototyped (04).
-- **Typography and token mapping.** Italian date and label strings read
-  `Theme.of(context).textTheme.*`, and `picked_style.dart` reads `outlineVariant` and
-  `onSurfaceVariant` — none of which exist in shadcn's ThemeData (02). shadcn uses
-  semantic text extensions (`.h1()`, `.muted()`). Mechanical, but which scale and which
-  colour slot each one lands on is undecided. 03 named the two the day cell needs
-  (`labelMedium` for the day number, `titleLarge` for the Shift Code) and left them open.
-  Sharpest once 04 shows the shell's real widgets.
-- **Month editor screen.** `month_editor_view.dart` (121 lines) is unexamined in detail.
-  Likely falls out of the mapping table (02), but may hold its own surprises.
-- **Verification.** How a plan-only map proves the mapping is right without building —
-  and what the build session should run to check itself (`pws -c flutter analyze`, a
-  screenshot pass on the emulator). Revisit near 06.
-- **`catui` teardown.** The `ShiftColors` carrier is settled (01). What remains unclear is
-  the order of removal: the `catui` git dependency, `lib/shared/theme.dart`, and the
-  `AppTokens.radius` references that survive in it. Revisit once 02 lands.
+Nothing. The way is clear; see the [spec](spec.md) and build tickets 08–10.
 
 ## Out of scope
 

@@ -215,3 +215,7 @@ The genuinely residual items, all already scheduled:
 - **Ticket 05/06** must verify on the emulator that `RefreshTrigger` fires from inside
   the `PageView` without the `depth == 1` predicate (row 12).
 - **Typography** per-string scale (row 17) stays where the map left it: unspecified.
+
+## Comments
+
+- 2026-09-22 — Row 9 overridden by [04 — Prototype the shell](04-prototype-shell-chrome.md): toast uses `ToastLocation.topCenter`, not `bottomLeft`, which sits under the floating bar.
