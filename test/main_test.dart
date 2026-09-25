@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:beeshift/data/shifts_repository.dart';
 import 'package:beeshift/main.dart';
 import 'package:beeshift/shared/shift_type.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/fake_shifts_repository.dart';
@@ -27,8 +27,8 @@ void main() {
     await tester.pump();
 
     expect(find.byType(CircularProgressIndicator), findsOne);
-    expect(find.byTooltip('Modifica'), findsNothing);
-    expect(find.byTooltip('Impostazioni'), findsNothing);
+    expect(find.byKey(const Key('Modifica')), findsNothing);
+    expect(find.byKey(const Key('Impostazioni')), findsNothing);
   });
 
   testWidgets('a failed connect fills the screen, and Retry re-opens', (
@@ -52,7 +52,7 @@ void main() {
 
     expect(find.text('Impossibile aprire il database.'), findsOne);
     expect(
-      find.byTooltip('Modifica'),
+      find.byKey(const Key('Modifica')),
       findsNothing,
       reason: 'nothing to edit behind a database that would not open',
     );
@@ -63,7 +63,7 @@ void main() {
     // A second attempt was actually made, and the app is now the Calendar.
     expect(attempts, 2);
     expect(find.text('Impossibile aprire il database.'), findsNothing);
-    expect(find.byTooltip('Modifica'), findsOne);
+    expect(find.byKey(const Key('Modifica')), findsOne);
   });
 
   testWidgets('Retry that fails again returns to the same error', (
