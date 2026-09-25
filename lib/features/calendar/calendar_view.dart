@@ -1,8 +1,7 @@
 import 'dart:math' as math;
 
-import 'package:catui/catui.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../../shared/italian_dates.dart';
 import '../../shared/shift_colors.dart';
@@ -55,9 +54,13 @@ class _CalendarPageState extends State<CalendarPage>
   Future<void> _pullToRefresh() async {
     if (await context.read<CalendarCubit>().refresh()) return;
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Aggiornamento non riuscito')));
+    // At the top: the bottom edge is under the floating bar.
+    showToast(
+      context: context,
+      builder: (context, overlay) =>
+          const SurfaceCard(child: Text('Aggiornamento non riuscito')),
+      location: ToastLocation.topCenter,
+    );
   }
 
   @override
@@ -69,7 +72,7 @@ class _CalendarPageState extends State<CalendarPage>
         // spinner and the connect-error screen, which the Shell never mounts
         // over — see ADR 0004.
         return Scaffold(
-          body: SafeArea(
+          child: SafeArea(
             // Not at the bottom: `barReserve` already measures from the raw
             // edge, and a SafeArea under it would take the inset off twice.
             bottom: false,
@@ -108,13 +111,13 @@ class _CalendarPageState extends State<CalendarPage>
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Text(
             monthTitle(state.visibleMonth),
-            style: Theme.of(context).textTheme.titleLarge,
+            style: Theme.of(context).typography.xLarge,
           ),
         ),
         // A heading and nothing more: seven letters centred over the columns
         // they name. Nothing here is tappable — a control that looks exactly
         // like a column heading is one nobody finds, which is why the Filter
-        // has its own chips above.
+        // has its own letters above.
         Padding(
           key: const Key('weekday-header'),
           padding: const EdgeInsets.symmetric(vertical: 4),
@@ -129,7 +132,7 @@ class _CalendarPageState extends State<CalendarPage>
                       // The bare initial says nothing out loud, and it is the
                       // only thing telling the two `M`s apart.
                       semanticsLabel: weekdayNames[day],
-                      style: Theme.of(context).textTheme.labelSmall,
+                      style: Theme.of(context).typography.xSmall,
                     ),
                   ),
                 ),
@@ -142,19 +145,20 @@ class _CalendarPageState extends State<CalendarPage>
             // screen the grid reaches the bottom. Reserved here so the last
             // row stops above it rather than under it.
             padding: EdgeInsets.only(bottom: barReserve(context)),
-            child: RefreshIndicator(
-              onRefresh: _pullToRefresh,
-              // The pull comes from inside a page, so it reaches here one
-              // viewport deeper than the default predicate accepts.
-              notificationPredicate: (notification) => notification.depth == 1,
-              // Exactly two children, so paging stops at both ends on its
-              // own — there is no third page to clamp against.
-              child: PageView(
-                onPageChanged: context.read<CalendarCubit>().showPage,
-                children: [
-                  for (final grid in grids) _MonthGrid(grid, state.muted),
-                ],
-              ),
+            // Exactly two children, so paging stops at both ends on its own —
+            // there is no third page to clamp against.
+            child: PageView(
+              onPageChanged: context.read<CalendarCubit>().showPage,
+              children: [
+                // One trigger per page, not one around the carousel:
+                // RefreshTrigger only hears its direct scrollable, and around
+                // the PageView that is the sideways one.
+                for (final grid in grids)
+                  RefreshTrigger(
+                    onRefresh: _pullToRefresh,
+                    child: _MonthGrid(grid, state.muted),
+                  ),
+              ],
             ),
           ),
         ),
@@ -181,7 +185,7 @@ class _FirstLoadError extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
-          FilledButton(onPressed: onRetry, child: const Text('Riprova')),
+          PrimaryButton(onPressed: onRetry, child: const Text('Riprova')),
         ],
       ),
     );
@@ -227,7 +231,7 @@ class _FilterControls extends StatelessWidget {
                   // trade the Month Editor's segments make.
                   code: type.code,
                   label: type.label,
-                  color: colors[type],
+                  color: colors[type]!,
                   selected: shiftFilter.contains(type),
                   onSelected: () => cubit.toggleShift(type),
                 ),
@@ -286,27 +290,24 @@ class _FilterLetter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final picked = pickedStyle(theme, color: color, selected: selected);
-    return FilterChip(
-      label: Text(code, semanticsLabel: label),
-      selected: selected,
-      // No fill either way: the border and the letter carry it, so the two
-      // states differ by colour and weight alone.
-      backgroundColor: Colors.transparent,
-      selectedColor: Colors.transparent,
-      side: picked.side,
-      labelStyle: picked.labelStyle,
-      // A tick beside a one-letter label doubles the chip's width and says
-      // nothing the border has not already said.
-      showCheckmark: false,
-      onSelected: (_) => onSelected(),
+    // No fill either way: the border and the letter carry it, so the two
+    // states differ by colour and weight alone. A plain Button, not a Toggle:
+    // a Toggle swaps to a filled style whenever it is on.
+    return Button(
+      style: pickedStyle(theme, color: color, selected: selected),
+      onPressed: onSelected,
+      // A button carries no selected flag of its own, so it is said here.
+      child: Semantics(
+        selected: selected,
+        child: Text(code, semanticsLabel: label),
+      ),
     );
   }
 }
 
 /// One of the Filter's two groups — the Shift Filter or the Weekday Filter —
-/// as a heading over its chips. The heading is what separates the two groups
-/// and what settles the one collision the shared chip idiom creates — `S` is
+/// as a heading over its letters. The heading is what separates the two
+/// groups and what settles the one collision the shared idiom creates — `S` is
 /// Smonto under `Filtra per turno` and Sabato under `Filtra per giorno`, and
 /// the letter alone cannot say which.
 ///
@@ -314,7 +315,7 @@ class _FilterLetter extends StatelessWidget {
 /// phone, and falling to a second line beats overflowing. A scroll view would
 /// be worse still — it would fight the pull-to-refresh for the same gesture.
 class _FilterGroup extends StatelessWidget {
-  /// The heading doubles as the key. The two groups draw the same chips from
+  /// The heading doubles as the key. The two groups draw the same letters from
   /// the same idiom, so the heading is the only thing that tells them apart —
   /// on screen, and for anything looking one of them up.
   _FilterGroup({required this.heading, required this.children})
@@ -329,7 +330,12 @@ class _FilterGroup extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(heading, style: Theme.of(context).textTheme.labelMedium),
+        Text(
+          heading,
+          style: Theme.of(
+            context,
+          ).typography.xSmall.copyWith(fontWeight: FontWeight.w500),
+        ),
         Wrap(spacing: 8, runSpacing: 4, children: children),
       ],
     );
@@ -350,7 +356,7 @@ class _MonthGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     // The grid never scrolls — it is sized to the viewport. The scroll view
     // exists only so the pull-down gesture has something to overscroll, which
-    // is what RefreshIndicator listens to.
+    // is what RefreshTrigger listens to.
     return LayoutBuilder(
       builder: (context, constraints) {
         final rows = cells.length ~/ 7;
@@ -410,7 +416,7 @@ class _DayCellView extends StatelessWidget {
     // A day with no Shift has no Shift Colour, so the accent stands in.
     final shiftColor = shift == null
         ? theme.colorScheme.primary
-        : ShiftColors.of(context)[shift];
+        : ShiftColors.of(context)[shift]!;
     // Today is marked only on the page that owns the day. It also appears as
     // filler on the next month's page whenever it is the last day of a month,
     // and a dimmed tile carrying a loud mark is neither one thing nor the
@@ -426,13 +432,13 @@ class _DayCellView extends StatelessWidget {
         child: DecoratedBox(
           decoration: ShapeDecoration(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppTokens.radius),
+              borderRadius: BorderRadius.circular(theme.radiusMd),
               // Today keeps its own Shift Colour on the edge rather than a
               // slab of accent across the face: the Shift Code inside stays
               // the thing you read, and the border is only how you find it.
               side: highlighted
                   ? BorderSide(color: shiftColor)
-                  : BorderSide(color: theme.colorScheme.outlineVariant),
+                  : BorderSide(color: theme.colorScheme.border),
             ),
           ),
           // Tiles get small on a short screen. Scaling each text down beats
@@ -449,8 +455,10 @@ class _DayCellView extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   child: Text(
                     '${cell.date.day}',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      fontWeight: highlighted ? FontWeight.bold : null,
+                    style: theme.typography.xSmall.copyWith(
+                      fontWeight: highlighted
+                          ? FontWeight.bold
+                          : FontWeight.w500,
                     ),
                   ),
                 ),
@@ -471,7 +479,7 @@ class _DayCellView extends StatelessWidget {
                         // Italian name is what is spoken — colour says
                         // nothing out loud, and neither does a bare `N`.
                         semanticsLabel: shift.label,
-                        style: theme.textTheme.titleLarge?.copyWith(
+                        style: theme.typography.xLarge.copyWith(
                           color: shiftColor,
                           fontWeight: highlighted ? FontWeight(900) : null,
                         ),

@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// The worker's Theme Mode choice, read once at construction and applied the
 /// moment it lands. Until then the app draws [ThemeMode.system] — also what a

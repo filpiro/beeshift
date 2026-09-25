@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/shifts_repository.dart';
@@ -97,7 +97,7 @@ class _MainAppState extends State<MainApp> {
     return BlocProvider.value(
       value: _themeCubit,
       child: BlocBuilder<ThemeCubit, ThemeMode>(
-        builder: (context, themeMode) => MaterialApp(
+        builder: (context, themeMode) => ShadcnApp(
           theme: lightTheme,
           darkTheme: darkTheme,
           themeMode: themeMode,
@@ -116,7 +116,7 @@ class _MainAppState extends State<MainApp> {
                 // handed a closure that returns the Future it has just
                 // assigned.
                 return Scaffold(
-                  body: SafeArea(
+                  child: SafeArea(
                     child: _ConnectError(
                       onRetry: () {
                         setState(() {
@@ -130,7 +130,7 @@ class _MainAppState extends State<MainApp> {
               final repository = snapshot.data;
               if (repository == null) {
                 return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
+                  child: Center(child: CircularProgressIndicator()),
                 );
               }
               return BlocProvider(
@@ -160,7 +160,7 @@ class _ConnectError extends StatelessWidget {
         children: [
           const Text('Impossibile aprire il database.'),
           const SizedBox(height: 12),
-          FilledButton(onPressed: onRetry, child: const Text('Riprova')),
+          PrimaryButton(onPressed: onRetry, child: const Text('Riprova')),
         ],
       ),
     );

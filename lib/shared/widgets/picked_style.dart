@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// How the app says "this one is picked", in the one place both the Filter's
-/// chips and the Month Editor's row of choices read it from.
+/// letters and the Month Editor's row of choices read it from. Both are a
+/// plain [Button] wearing this style.
 ///
 /// No fill: a hairline border in the thing's own colour, and its letter bold
 /// in that same colour. The colour is the whole signal, which is why nothing
@@ -16,24 +17,36 @@ import 'package:flutter/material.dart';
 /// other is a single-choice row — so what is shared is the look, not the
 /// behaviour. This is that look and nothing else.
 ///
-/// Lives here rather than in `catui` for the same reason [EqualRowSegmented]
-/// does: one app's idea of "picked" is a guess about what a second app wants.
-/// Goes upstream the day a second app wants this exact idiom.
-({BorderSide side, TextStyle? labelStyle}) pickedStyle(
+/// Lives in the app rather than in a shared package for the same reason
+/// [EqualRowSegmented] does: one app's idea of "picked" is a guess about what
+/// a second app wants.
+ButtonStyle pickedStyle(
   ThemeData theme, {
   required Color color,
   required bool selected,
-}) => (
-  side: selected
-      ? BorderSide(color: color)
-      : BorderSide(color: theme.colorScheme.outlineVariant),
-  // Larger than Material's default label in both places: these are the letters
-  // the user reads off the real rota.
-  labelStyle: theme.textTheme.titleMedium?.copyWith(
-    color: selected ? color : theme.colorScheme.onSurfaceVariant,
-    // Spelled out rather than left to fall through: `titleMedium` is w500 of
-    // its own accord, and a null here would quietly keep it — near enough to
-    // bold that the two states stop being one glance apart.
-    fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-  ),
-);
+}) {
+  final ink = selected ? color : theme.colorScheme.mutedForeground;
+  final edge = Border.all(color: selected ? color : theme.colorScheme.border);
+  return ButtonStyle(
+    variance: ButtonVariance.outline
+        .withBorder(border: edge, hoverBorder: edge, focusBorder: edge)
+        // Outline paints a faint fill at rest and a stronger one on hover.
+        .withBackgroundColor(
+          color: Colors.transparent,
+          hoverColor: Colors.transparent,
+          focusColor: Colors.transparent,
+        )
+        .copyWith(
+          // Every state: hover must not repaint the letter it is identifying.
+          // Larger than the default label: these are the letters the user
+          // reads off the real rota. Weight spelled out in both states so the
+          // two stay one glance apart.
+          textStyle: (context, states, style) => style.merge(
+            theme.typography.base.copyWith(
+              color: ink,
+              fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ),
+  );
+}

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// Gap between the bar and whatever the system reserves at the bottom edge —
 /// a gesture bar, a home indicator. Cleared with [barClearance], never used
@@ -44,7 +44,7 @@ class BarDestination {
 }
 
 /// A rounded pill floating above the bottom edge, hugging its buttons rather
-/// than spanning the screen. Lives here rather than in `catui`: it has one
+/// than spanning the screen. Lives in the app, not a shared package: it has one
 /// consumer today — see ADR 0004 — and a third destination is a list entry,
 /// not a new widget.
 class FloatingBottomBar extends StatelessWidget {
@@ -54,10 +54,19 @@ class FloatingBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.surfaceContainerHigh,
-      elevation: 4,
-      shape: const StadiumBorder(),
+    final scheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        color: scheme.card,
+        shape: StadiumBorder(side: BorderSide(color: scheme.border)),
+        shadows: const [
+          BoxShadow(
+            color: Color(0x33000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(4),
         child: Row(
@@ -77,23 +86,31 @@ class _BarButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return IconButton(
-      // A stable key, not the tooltip: the tooltip is its own widget one
-      // level down, so finding a button by its tooltip finds that instead.
-      key: Key(destination.label),
-      tooltip: destination.label,
-      onPressed: destination.onPressed,
-      style: IconButton.styleFrom(
-        shape: const StadiumBorder(),
+    final color = destination.active ? scheme.primary : scheme.mutedForeground;
+    return Tooltip(
+      tooltip: (_) => TooltipContainer(child: Text(destination.label)),
+      child: IconButton(
+        // A stable key: the tooltip is its own widget one level up, and not
+        // one `find.byTooltip` knows, so the key is how a button is found.
+        key: Key(destination.label),
         // The glyph alone carries "you are here" — a filled pill behind it
-        // read as a second bar inside the bar.
-        foregroundColor: destination.active
-            ? scheme.primary
-            : scheme.onSurfaceVariant,
+        // read as a second bar inside the bar. On the variance, not the
+        // Icon, so the button's own state picks the colour. Hover and focus
+        // too: the ghost default would repaint the glyph on either. Disabled
+        // is spelled out: the ghost default is mutedForeground, which is
+        // what an idle button already is, so it would not dim at all.
+        variance: ButtonVariance.ghost.withForegroundColor(
+          color: color,
+          hoverColor: color,
+          focusColor: color,
+          disabledColor: scheme.mutedForeground.withValues(alpha: 0.4),
+        ),
+        shape: ButtonShape.circle,
+        onPressed: destination.onPressed,
+        // The tooltip is a hint, not the accessible name — the glyph needs its
+        // own label to be announced at all.
+        icon: Icon(destination.icon, semanticLabel: destination.label),
       ),
-      // The tooltip is a hint, not the accessible name — the glyph needs its
-      // own label to be announced at all.
-      icon: Icon(destination.icon, semanticLabel: destination.label),
     );
   }
 }
