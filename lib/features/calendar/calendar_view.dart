@@ -413,15 +413,19 @@ class _DayCellView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final shift = cell.shift;
-    // A day with no Shift has no Shift Colour, so the accent stands in.
-    final shiftColor = shift == null
-        ? theme.colorScheme.primary
+    // An Empty day's large part is the same grey the old square border used —
+    // the theme's own "muted" colour sits too close to the background.
+    final largeColor = shift == null
+        ? theme.colorScheme.border
         : ShiftColors.of(context)[shift]!;
     // Today is marked only on the page that owns the day. It also appears as
     // filler on the next month's page whenever it is the last day of a month,
     // and a dimmed tile carrying a loud mark is neither one thing nor the
     // other — so the page that merely borrows the day draws it plainly.
     final highlighted = cell.isToday && !cell.isFiller;
+    final todayArcColor = highlighted
+        ? theme.colorScheme.primary
+        : theme.colorScheme.border;
     return Opacity(
       // One opacity for both reasons, so a muted filler day is not dimmed
       // twice. Today's mark dims with everything else: an exception for it
@@ -429,68 +433,114 @@ class _DayCellView extends StatelessWidget {
       opacity: cell.isFiller || muted ? 0.35 : 1,
       child: Padding(
         padding: const EdgeInsets.all(2),
-        child: DecoratedBox(
-          decoration: ShapeDecoration(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(theme.radiusMd),
-              // Today keeps its own Shift Colour on the edge rather than a
-              // slab of accent across the face: the Shift Code inside stays
-              // the thing you read, and the border is only how you find it.
-              side: highlighted
-                  ? BorderSide(color: shiftColor)
-                  : BorderSide(color: theme.colorScheme.border),
-            ),
-          ),
-          // Tiles get small on a short screen. Scaling each text down beats
-          // clipping, and beats a layout that only works above some width.
-          child: Stack(
-            children: [
-              // The day number is how you find the right tile, not what you
-              // read off it — so it stays small and gets out of the corner
-              // the Shift Code wants.
-              Positioned(
-                top: 6,
-                right: 6,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Font size off the ring's own size, like the reference's `cqw`
+            // units — so both scale together on a short screen.
+            final side = math.min(constraints.maxWidth, constraints.maxHeight);
+            return CustomPaint(
+              size: Size(constraints.maxWidth, constraints.maxHeight),
+              painter: DayRingPainter(
+                largeColor: largeColor,
+                todayArcColor: todayArcColor,
+              ),
+              child: Center(
+                // Tiles get small on a short screen. Scaling down beats
+                // clipping, and beats a layout that only works above some
+                // width.
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: Text(
-                    '${cell.date.day}',
-                    style: theme.typography.xSmall.copyWith(
-                      fontWeight: highlighted
-                          ? FontWeight.bold
-                          : FontWeight.w500,
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (shift != null)
+                        Text(
+                          shift.code,
+                          // The letter is drawn; the Italian name is what is
+                          // spoken — colour says nothing out loud, and
+                          // neither does a bare `N`.
+                          semanticsLabel: shift.label,
+                          style: theme.typography.xLarge.copyWith(
+                            fontSize: side * 0.34,
+                            color: theme.colorScheme.foreground,
+                          ),
+                        ),
+                      Text(
+                        '${cell.date.day}',
+                        style: theme.typography.xSmall.copyWith(
+                          fontSize: side * 0.17,
+                          color: theme.colorScheme.foreground,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              if (shift != null)
-                Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Padding(
-                    // The day number sits 4px off a ~12px label; the Shift Code
-                    // is drawn twice that size, so it sits twice as far off the
-                    // corner and the two insets read as the same gap.
-                    padding: const EdgeInsets.only(left: 8, bottom: 4),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        shift.code,
-                        // The letter is drawn and the colour carries it; the
-                        // Italian name is what is spoken — colour says
-                        // nothing out loud, and neither does a bare `N`.
-                        semanticsLabel: shift.label,
-                        style: theme.typography.xLarge.copyWith(
-                          color: shiftColor,
-                          fontWeight: highlighted ? FontWeight(900) : null,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
   }
+}
+
+/// The Day Ring: two arcs split 80/20, the small part — the Today Arc —
+/// centred at the bottom. Angles as in SVG: 0 at 3 o'clock, clockwise, which
+/// is exactly what [Canvas.drawArc] already uses.
+class DayRingPainter extends CustomPainter {
+  const DayRingPainter({required this.largeColor, required this.todayArcColor});
+
+  /// The large 80% part — the Shift Colour, or the muted grey on an Empty
+  /// day.
+  final Color largeColor;
+
+  /// The small 20% part — the accent on today (owned by this page), muted
+  /// otherwise.
+  final Color todayArcColor;
+
+  static const _smallSweep = 0.4 * math.pi; // 20% of the circle
+  static const _largeSweep = 1.6 * math.pi; // 80% of the circle
+  static const _smallCenter = math.pi / 2; // 6 o'clock: the bottom
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final side = math.min(size.width, size.height);
+    // Proportional to the ring, per the spec's reference — never a hairline.
+    final stroke = math.max(side * 0.05, 3.0);
+    final radius = math.max(side / 2 - stroke / 2, 0.0);
+    // Inset by half a stroke so the outer edge is not clipped.
+    final rect = Rect.fromCircle(
+      center: Offset(size.width / 2, size.height / 2),
+      radius: radius,
+    );
+    // Round caps stick out half a stroke each, so the gap the spec asks for
+    // (one stroke wide) needs this much angle removed at each of the ring's
+    // two junctions.
+    final gap = radius == 0 ? 0.0 : 2 * stroke / radius;
+
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(
+      rect,
+      _smallCenter + _smallSweep / 2 + gap / 2,
+      _largeSweep - gap,
+      false,
+      paint..color = largeColor,
+    );
+    canvas.drawArc(
+      rect,
+      _smallCenter - _smallSweep / 2 + gap / 2,
+      _smallSweep - gap,
+      false,
+      paint..color = todayArcColor,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant DayRingPainter oldDelegate) =>
+      oldDelegate.largeColor != largeColor ||
+      oldDelegate.todayArcColor != todayArcColor;
 }
