@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -101,6 +102,14 @@ class _MainAppState extends State<MainApp> {
           theme: lightTheme,
           darkTheme: darkTheme,
           themeMode: themeMode,
+          // Material's AppBar set the status bar icons per brightness; shadcn
+          // does not, so Light mode drew white icons on a white ground.
+          builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+            value: Theme.of(context).brightness == Brightness.dark
+                ? SystemUiOverlayStyle.light
+                : SystemUiOverlayStyle.dark,
+            child: child!,
+          ),
           // No Scaffold here: each of the three states brings its own, so the
           // Shell's bar cannot float over the other two.
           home: FutureBuilder(

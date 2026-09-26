@@ -1,5 +1,7 @@
 # `catui` as the house style, and a Shell that is an index
 
+> **Superseded in part** by [ADR-0006](0006-shadcn-flutter-replaces-catui.md): the house-style half ("The look") no longer holds. The navigation half stands.
+
 Beeshift takes its theme, design tokens and icon set from `catui`, a git dependency shared with Clockodile, and adopts that app's folder layout with them. Navigation between the Shell's two destinations is an `int` index over an `IndexedStack`. There is no router.
 
 ## Considered Options

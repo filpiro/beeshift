@@ -65,6 +65,8 @@ go through `pws -c ...` and carry `--dart-define-from-file=env.json`. See `CLAUD
 
 - [08 — Swap lib/ to shadcn_flutter](issues/08-swap-lib-to-shadcn.md) — **`lib/` is Material- and catui-free; `analyze lib` clean.** Four package deviations: `RefreshTrigger` only hears depth-0 scrolls, so it now wraps each `_MonthGrid` (spec §9 fallback, applied up front); `ButtonVariance.outline` fills at rest, so `pickedStyle` forces a transparent background; `withForegroundColor` reverts on hover/focus, so the bar pins those too; ghost's disabled colour equals idle, so the bar sets `disabledColor` to dim. UI tests still fail — ticket 09.
 
+- [10 — Verify on the emulator, then update the docs](issues/10-verify-and-docs.md) — **Migration verified on screen, Dark and Light; user accepted.** Fixed invisible status-bar icons in Light (`AnnotatedRegion` in `ShadcnApp.builder`) and widened the floating bar's padding and icon gaps. ADR-0006 and `CONTEXT.md` written; ADR-0004 (look) and 0005 marked superseded.
+
 ## Not yet specified
 
 Nothing. The way is clear; see the [spec](spec.md) and build tickets 08–10.

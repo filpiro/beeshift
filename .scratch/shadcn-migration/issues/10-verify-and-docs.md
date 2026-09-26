@@ -1,7 +1,7 @@
 # 10 — Verify on the emulator, then update the docs
 
 Type: task
-Status: open
+Status: resolved
 Blocked by: 09
 Map: ../map.md
 Model: Opus 5.5 · Effort: medium
@@ -21,4 +21,10 @@ Done when every §9 check passes on screen and the user accepts the look.
 
 ## Answer
 
-<!-- filled on resolution -->
+**Verified on the Pixel 9 emulator, Dark and Light; the user accepted the look.** All §9 checks pass. `analyze` clean, 114 tests pass.
+
+Two fixes made during the walk:
+- **Status bar icons.** Material's `AppBar` used to set them per brightness; shadcn does not, so Light drew white icons on white. `ShadcnApp.builder` in `lib/main.dart` now wraps the app in an `AnnotatedRegion<SystemUiOverlayStyle>` keyed on `Theme.of(context).brightness`.
+- **Bar spacing, at the user's request.** `FloatingBottomBar` padding 4 → 12 horizontal / 8 vertical, 12 between icons; `_barHeightAndGap` 64 → 72 so the grid still clears the taller bar.
+
+Docs per §10 were already in the working tree and match the spec: ADR-0006, the "Shift Colour" entry in `CONTEXT.md`, superseded notes on ADR-0004 (house-style half) and ADR-0005.

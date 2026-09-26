@@ -17,7 +17,7 @@ The single letter identifying a Shift Type (`7`, `3`, `N`, `S`, `R`, `F`). What 
 _Avoid_: symbol, letter, abbreviation
 
 **Shift Colour**:
-The one palette colour that identifies a Shift Type. It is identification, not decoration: the colour says which Shift Type this is, the same way the Shift Code does. One colour per Shift Type, taken per flavor so latte and mocha each read correctly, and read through the theme. Only a Shift Type has one — a day with no Shift has none, and the app's accent stands in wherever a colour is still needed. Yellow is the accent and red is the error colour, so neither is a Shift Colour.
+The one palette colour that identifies a Shift Type. It is identification, not decoration: the colour says which Shift Type this is, the same way the Shift Code does. One colour per Shift Type, one shade per brightness, from shadcn's palette. Only a Shift Type has one — a day with no Shift has none, and the app's accent stands in wherever a colour is still needed. Yellow is the accent and red is the error colour, so neither is a Shift Colour.
 _Avoid_: highlight, tint, badge colour
 
 **Rotation**:

@@ -7,7 +7,7 @@ const barBottomMargin = 24.0;
 
 /// The bar's own height plus a gap, so the last row of the Calendar's grid
 /// stops above the bar rather than touching it.
-const _barHeightAndGap = 64.0;
+const _barHeightAndGap = 72.0;
 
 /// How far above the bottom of the screen the bar floats: the system's
 /// reserved strip, plus our own margin over it.
@@ -68,9 +68,10 @@ class FloatingBottomBar extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          spacing: 12,
           children: [for (final d in destinations) _BarButton(d)],
         ),
       ),
