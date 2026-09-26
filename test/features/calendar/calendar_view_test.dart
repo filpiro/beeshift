@@ -94,21 +94,28 @@ void main() {
   }
 
   group('the tile grid', () {
-    /// The [DayRingPainter] a given day's tile is drawn with.
-    DayRingPainter painterOf(WidgetTester tester, String day) {
-      final tile = find
-          .ancestor(of: find.text(day), matching: find.byType(CustomPaint))
-          .first;
-      return tester.widget<CustomPaint>(tile).painter as DayRingPainter;
+    /// The side a tile's border is drawn with, or null if it is not a tile.
+    BorderSide? sideOf(Widget widget) {
+      if (widget is! DecoratedBox) return null;
+      final decoration = widget.decoration;
+      if (decoration is! ShapeDecoration) return null;
+      final shape = decoration.shape;
+      return shape is RoundedRectangleBorder ? shape.side : null;
     }
 
-    /// Today's tile: the Today Arc is the accent — every other tile's Today
-    /// Arc is muted.
+    /// Today's tile: every border is a hairline now, so the mark is the
+    /// colour — every other tile keeps the ordinary outline. No tile is
+    /// filled at all any more.
+    ///
+    /// `style != BorderStyle.none` excludes every shadcn `Button`'s own
+    /// invisible-until-focused ring (`FocusOutline`, always in the tree,
+    /// `theme.colorScheme.ring` — which is the same amber as `primary`), so
+    /// only a real, drawn tile border counts.
     Finder markedTiles() => find.byWidgetPredicate((widget) {
-      if (widget is! CustomPaint) return false;
-      final painter = widget.painter;
-      return painter is DayRingPainter &&
-          painter.todayArcColor == lightTheme.colorScheme.primary;
+      final side = sideOf(widget);
+      return side != null &&
+          side.style != BorderStyle.none &&
+          side.color != lightTheme.colorScheme.border;
     });
 
     testWidgets('names the visible month, and renames it on a swipe', (
@@ -133,13 +140,23 @@ void main() {
         find.descendant(of: markedTiles(), matching: find.text('15')),
         findsOne,
       );
+      // Nothing is filled any more — the border carries the whole mark.
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is DecoratedBox &&
+              widget.decoration is ShapeDecoration &&
+              (widget.decoration as ShapeDecoration).color != null,
+        ),
+        findsNothing,
+      );
     });
 
     /// The style some text is drawn with inside a given day's tile — the day
     /// number itself, or the Shift Code beside it.
     TextStyle? styleOf(WidgetTester tester, String day, String text) {
       final tile = find
-          .ancestor(of: find.text(day), matching: find.byType(CustomPaint))
+          .ancestor(of: find.text(day), matching: find.byType(DecoratedBox))
           .first;
       return tester
           .widget<Text>(find.descendant(of: tile, matching: find.text(text)))
@@ -149,8 +166,9 @@ void main() {
     bool isBold(WidgetTester tester, String day, String text) =>
         styleOf(tester, day, text)?.fontWeight == FontWeight.bold;
 
-    testWidgets('today with a Shift shows its Shift Colour in the ring, and '
-        'the accent in the Today Arc', (tester) async {
+    testWidgets('today with a Shift borrows its Shift Colour, and is bold', (
+      tester,
+    ) async {
       await pumpAt(
         tester,
         DateTime(2026, 2, 15),
@@ -158,34 +176,36 @@ void main() {
       );
       const colors = ShiftColors.light;
 
-      final painter = painterOf(tester, '15');
-      expect(painter.largeColor, colors[ShiftType.notte]);
-      expect(painter.todayArcColor, lightTheme.colorScheme.primary);
-      // The ring carries the colour; the text stays plain foreground, same
-      // weight as every other day.
-      expect(styleOf(tester, '15', 'N')?.color, lightTheme.colorScheme.foreground);
-      expect(isBold(tester, '15', '15'), isFalse);
-      expect(isBold(tester, '15', 'N'), isFalse);
+      expect(sideOf(tester.widget(markedTiles())), isNotNull);
+      expect(
+        sideOf(tester.widget(markedTiles()))!.color,
+        colors[ShiftType.notte],
+      );
+      expect(styleOf(tester, '15', 'N')?.color, colors[ShiftType.notte]);
+      expect(isBold(tester, '15', '15'), isTrue);
+      // Heavier than the day number's plain bold: the Shift Code is the
+      // largest glyph on the tile, so it takes FontWeight.w900.
+      expect(styleOf(tester, '15', 'N')?.fontWeight, FontWeight.w900);
     });
 
     testWidgets('today with no Shift falls back to the accent, and has no '
         'letter', (tester) async {
       await pumpAt(tester, DateTime(2026, 2, 15));
 
-      final painter = painterOf(tester, '15');
-      expect(painter.todayArcColor, lightTheme.colorScheme.primary);
-      // Empty, so the large part is muted, not a Shift Colour.
-      expect(painter.largeColor, lightTheme.colorScheme.border);
+      expect(
+        sideOf(tester.widget(markedTiles()))!.color,
+        lightTheme.colorScheme.primary,
+      );
       // No Shift, so no letter at all — the tile is just a number.
       final tile = find
-          .ancestor(of: find.text('15'), matching: find.byType(CustomPaint))
+          .ancestor(of: find.text('15'), matching: find.byType(DecoratedBox))
           .first;
       expect(find.descendant(of: tile, matching: find.byType(Text)), findsOne);
-      expect(isBold(tester, '15', '15'), isFalse);
+      expect(isBold(tester, '15', '15'), isTrue);
     });
 
     testWidgets('a plain day carries its Shift Colour but no bold and no '
-        'Today Arc accent', (tester) async {
+        'border', (tester) async {
       await pumpAt(
         tester,
         DateTime(2026, 2, 15),
@@ -193,10 +213,7 @@ void main() {
       );
       const colors = ShiftColors.light;
 
-      final painter = painterOf(tester, '10');
-      expect(painter.largeColor, colors[ShiftType.primo]);
-      expect(painter.todayArcColor, lightTheme.colorScheme.border);
-      expect(styleOf(tester, '10', '7')?.color, lightTheme.colorScheme.foreground);
+      expect(styleOf(tester, '10', '7')?.color, colors[ShiftType.primo]);
       expect(isBold(tester, '10', '10'), isFalse);
       expect(isBold(tester, '10', '7'), isFalse);
       // Today is the only marked tile — a Shift does not mark a day.
@@ -221,7 +238,7 @@ void main() {
 
       // Dimming is the Opacity's job, so the colour underneath is untouched
       // and it is applied exactly once.
-      expect(painterOf(tester, '10').largeColor, colors[ShiftType.primo]);
+      expect(styleOf(tester, '10', '7')?.color, colors[ShiftType.primo]);
       final opacities = tester.widgetList<Opacity>(
         find.ancestor(of: find.text('10'), matching: find.byType(Opacity)),
       );

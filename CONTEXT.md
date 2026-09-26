@@ -59,14 +59,6 @@ _Avoid_: filtered out, hidden, disabled
 The default screen. A read-only month view of the Data Window, one page per month. It never writes.
 _Avoid_: home, month view
 
-**Day Ring**:
-How the Calendar draws one day: a ring split into a large part and a small part at the bottom, with the Shift Code over the day number in its centre. The large part wears the day's Shift Colour, or the muted colour on an Empty day. The split is fixed and says nothing about the Shift — it is shape, not data.
-_Avoid_: tile, cell, badge
-
-**Today Arc**:
-The small bottom part of the Day Ring. It wears the accent on today, and the muted colour on every other day. It is how today is found on the Calendar, and only on the page that owns the day.
-_Avoid_: today marker, highlight, turn
-
 **Month Editor**:
 The screen for recording Shifts, reached from the Calendar. It edits whichever month the Calendar is showing, pre-loaded with that month's existing Shifts, and commits every change in one batch. The only place in the app that writes. It covers everything while it is open, and leaving it discards whatever was not saved.
 _Avoid_: Insert Shifts, bulk insert, insert screen
