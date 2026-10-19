@@ -431,8 +431,8 @@ class _DayCellView extends StatelessWidget {
         padding: const EdgeInsets.all(2),
         child: DecoratedBox(
           decoration: ShapeDecoration(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(theme.radiusMd),
+            // Pill, matching the theme's full radius.
+            shape: StadiumBorder(
               // Today keeps its own Shift Colour on the edge rather than a
               // slab of accent across the face: the Shift Code inside stays
               // the thing you read, and the border is only how you find it.

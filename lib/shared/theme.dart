@@ -1,16 +1,9 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-/// Beeshift's accent: Amber, layered onto shadcn's Slate base scheme.
-/// `ColorScheme.copyWith` takes `ValueGetter<Color>`, hence the closures.
-ColorScheme _amber(ColorScheme base) => base.copyWith(
-  primary: () => Colors.amber.shade500,
-  primaryForeground: () => Colors.slate.shade950,
-  ring: () => Colors.amber.shade500,
-);
-
+/// Beeshift's accent: shadcn's stock Amber recolor on the Slate base scheme.
 ThemeData _theme(ColorScheme scheme) => ThemeData(
-  colorScheme: _amber(scheme),
-  radius: 0.75, // "Rounded"; shadcn default is 0.5
+  colorScheme: scheme.amber,
+  radius: 1.0, // "Full" (pill); shadcn default is 0.5
   scaling: 1.0,
   density: Density.reducedDensity,
   surfaceOpacity: 1.0, // "Solid"
