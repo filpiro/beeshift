@@ -1,11 +1,10 @@
-import 'package:catui/catui.dart';
-import 'package:flutter/material.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import 'picked_style.dart';
 
 /// One choice in an [EqualRowSegmented]: what selects it, what it draws, and
 /// what a screen reader says instead — the drawn label and the spoken one are
-/// allowed to differ, same trade as [CatSegmented].
+/// allowed to differ.
 class RowSegment<T> {
   const RowSegment({
     required this.value,
@@ -28,15 +27,13 @@ class RowSegment<T> {
   final String? label;
 }
 
-/// [CatSegmented]'s separate-buttons idiom, forced to equal shares and one
+/// A separate-buttons segmented control, forced to equal shares and one
 /// line rather than left to wrap: [Row] over [Wrap], each segment in an
 /// [Expanded]. A phone's width divided evenly among six single-letter
 /// buttons is exactly what a wrapping group would rather not fit on one line.
 ///
-/// Lives here rather than in `catui`: a variant of an existing widget for one
-/// consumer is a guess about what a second app wants. Goes upstream, next to
-/// [CatSegmented], the day a second app needs equal-width forced-single-row
-/// segments.
+/// Lives in the app rather than in a shared package: a control for one
+/// consumer is a guess about what a second app wants.
 class EqualRowSegmented<T> extends StatelessWidget {
   const EqualRowSegmented({
     super.key,
@@ -60,7 +57,7 @@ class EqualRowSegmented<T> extends StatelessWidget {
     return Row(
       children: [
         for (final (index, segment) in segments.indexed) ...[
-          if (index > 0) const SizedBox(width: AppTokens.segmentGap),
+          if (index > 0) const SizedBox(width: 8),
           Expanded(child: _button(theme, segment)),
         ],
       ],
@@ -71,29 +68,22 @@ class EqualRowSegmented<T> extends StatelessWidget {
   /// letter, not with a filled face — see [pickedStyle].
   Widget _button(ThemeData theme, RowSegment<T> segment) {
     final isSelected = segment.value == selected;
-    final picked = pickedStyle(
-      theme,
-      color: segment.color,
-      selected: isSelected,
-    );
-    return OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        // Only the row's own constraint: tall enough to be a real tap target.
-        // Width is [Expanded]'s job, not the button's.
-        minimumSize: const Size(0, 48),
-        side: picked.side,
-        textStyle: picked.labelStyle,
-        foregroundColor: picked.labelStyle?.color,
-      ),
-      onPressed: () => onChanged(segment.value),
-      // Said out loud, because nothing else says it: an outlined button
-      // carries no selected flag of its own, and now that the fill is gone the
-      // colour is the only thing announcing it on screen. Inside the button
-      // rather than around it, so it lands on the node the button already
-      // publishes instead of a second one beside it.
-      child: Semantics(
-        selected: isSelected,
-        child: Text(segment.code, semanticsLabel: segment.label),
+    // Only the row's own constraint: tall enough to be a real tap target.
+    // Width is [Expanded]'s job, not the button's.
+    return SizedBox(
+      height: 48,
+      child: Button(
+        style: pickedStyle(theme, color: segment.color, selected: isSelected),
+        onPressed: () => onChanged(segment.value),
+        // Said out loud, because nothing else says it: an outlined button
+        // carries no selected flag of its own, and now that the fill is gone
+        // the colour is the only thing announcing it on screen. Inside the
+        // button rather than around it, so it lands on the node the button
+        // already publishes instead of a second one beside it.
+        child: Semantics(
+          selected: isSelected,
+          child: Text(segment.code, semanticsLabel: segment.label),
+        ),
       ),
     );
   }

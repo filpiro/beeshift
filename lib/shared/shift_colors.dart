@@ -1,49 +1,31 @@
-import 'package:catui/catui.dart';
-import 'package:flutter/material.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import 'shift_type.dart';
 
-/// The Shift Colour of each Shift Type, taken per flavor so latte and mocha
-/// each get their own hues from one table.
+/// The Shift Colour of each Shift Type: shadcn's palette, shade 300 on the
+/// dark ground and 700 on the light one. See ADR-0006.
 ///
-/// The mapping is beeshift's, not the house style's: `catui` has no opinion
-/// about what a night shift looks like. See ADR-0005.
-///
-/// Yellow is the app's accent and red is the scheme's error colour, so neither
-/// is available here. A day with no Shift has no Shift Colour — the accent
-/// stands in wherever one is still needed.
-@immutable
-class ShiftColors extends ThemeExtension<ShiftColors> {
-  const ShiftColors(this._byType);
+/// Amber is the app's accent and red is the error colour, so neither is
+/// here. A day with no Shift has no Shift Colour — the accent stands in.
+abstract final class ShiftColors {
+  static const dark = <ShiftType, Color>{
+    ShiftType.primo: Color(0xFFFDBA74), // orange-300
+    ShiftType.secondo: Color(0xFF93C5FD), // blue-300
+    ShiftType.notte: Color(0xFFC4B5FD), // violet-300
+    ShiftType.smonto: Color(0xFF5EEAD4), // teal-300
+    ShiftType.riposo: Color(0xFF86EFAC), // green-300
+    ShiftType.ferie: Color(0xFFF9A8D4), // pink-300
+  };
 
-  ShiftColors.forFlavor(Flavor flavor)
-    : _byType = {
-        ShiftType.primo: flavor.peach,
-        ShiftType.secondo: flavor.blue,
-        ShiftType.notte: flavor.mauve,
-        ShiftType.smonto: flavor.teal,
-        ShiftType.riposo: flavor.green,
-        ShiftType.ferie: flavor.pink,
-      };
+  static const light = <ShiftType, Color>{
+    ShiftType.primo: Color(0xFFC2410C), // orange-700
+    ShiftType.secondo: Color(0xFF1D4ED8), // blue-700
+    ShiftType.notte: Color(0xFF6D28D9), // violet-700
+    ShiftType.smonto: Color(0xFF0F766E), // teal-700
+    ShiftType.riposo: Color(0xFF15803D), // green-700
+    ShiftType.ferie: Color(0xFFBE185D), // pink-700
+  };
 
-  final Map<ShiftType, Color> _byType;
-
-  /// Every Shift Type is present, so the lookup cannot miss.
-  Color operator [](ShiftType type) => _byType[type]!;
-
-  static ShiftColors of(BuildContext context) =>
-      Theme.of(context).extension<ShiftColors>()!;
-
-  @override
-  ShiftColors copyWith({Map<ShiftType, Color>? byType}) =>
-      ShiftColors(byType ?? _byType);
-
-  @override
-  ShiftColors lerp(ShiftColors? other, double t) {
-    if (other == null) return this;
-    return ShiftColors({
-      for (final type in ShiftType.values)
-        type: Color.lerp(this[type], other[type], t)!,
-    });
-  }
+  static Map<ShiftType, Color> of(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? dark : light;
 }

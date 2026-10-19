@@ -5,9 +5,9 @@ import 'package:beeshift/features/shell/shell_view.dart';
 import 'package:beeshift/shared/shift_type.dart';
 import 'package:beeshift/shared/theme.dart';
 import 'package:beeshift/shared/widgets/floating_bottom_bar.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../../data/fake_shifts_repository.dart';
 
@@ -31,7 +31,7 @@ void main() {
     final cubit = CalendarCubit(repository, clock: () => DateTime(2026, 2, 15));
     await cubit.load();
     await tester.pumpWidget(
-      MaterialApp(
+      ShadcnApp(
         theme: lightTheme,
         home: Builder(
           // A gesture bar or a home indicator, faked onto the real
@@ -58,17 +58,18 @@ void main() {
   /// fill.
   bool activeAt(WidgetTester tester, String label) {
     final button = find.byKey(Key(label));
-    final style = tester.widget<IconButton>(button).style;
-    expect(style?.backgroundColor, isNull, reason: 'the icon carries it alone');
-    return style?.foregroundColor?.resolve({}) ==
-        Theme.of(tester.element(button)).colorScheme.primary;
+    final variance = tester.widget<IconButton>(button).variance;
+    final context = tester.element(button);
+    final decoration =
+        variance.decoration(context, const {}) as BoxDecoration;
+    expect(
+      (decoration.color?.a ?? 0) > 0,
+      isFalse,
+      reason: 'the icon carries it alone',
+    );
+    return variance.iconTheme(context, const {}).color ==
+        Theme.of(context).colorScheme.primary;
   }
-
-  testWidgets('there is no floating edit button anywhere', (tester) async {
-    await pumpShell(tester);
-
-    expect(find.byType(FloatingActionButton), findsNothing);
-  });
 
   testWidgets('a pill hugs three buttons — Calendario, Modifica, '
       'Impostazioni — each named to a screen reader', (tester) async {
@@ -76,7 +77,7 @@ void main() {
     await pumpShell(tester);
 
     for (final label in ['Calendario', 'Modifica', 'Impostazioni']) {
-      expect(find.byTooltip(label), findsOne);
+      expect(find.byKey(Key(label)), findsOne);
       expect(find.bySemanticsLabel(label), findsOne);
     }
 
@@ -90,7 +91,7 @@ void main() {
     expect(order[1], lessThan(order[2]));
 
     // A pill hugging its buttons, not a bar spanning the screen.
-    final pill = tester.getRect(find.byType(Material).last);
+    final pill = tester.getRect(find.byType(FloatingBottomBar));
     expect(pill.width, lessThan(tester.getRect(find.byType(ShellPage)).width));
     handle.dispose();
   });
@@ -102,7 +103,7 @@ void main() {
     expect(activeAt(tester, 'Impostazioni'), isFalse);
     expect(find.text('Febbraio 2026'), findsOne);
 
-    await tester.tap(find.byTooltip('Impostazioni'));
+    await tester.tap(find.byKey(const Key('Impostazioni')));
     await tester.pumpAndSettle();
 
     expect(activeAt(tester, 'Impostazioni'), isTrue);
@@ -110,7 +111,7 @@ void main() {
     expect(find.text('Impostazioni'), findsOne, reason: "Settings' app bar");
     expect(find.text('Febbraio 2026'), findsNothing);
 
-    await tester.tap(find.byTooltip('Calendario'));
+    await tester.tap(find.byKey(const Key('Calendario')));
     await tester.pumpAndSettle();
 
     expect(activeAt(tester, 'Calendario'), isTrue);
@@ -123,13 +124,13 @@ void main() {
   ) async {
     await pumpShell(tester);
 
-    await tester.tap(find.byTooltip('Calendario'));
+    await tester.tap(find.byKey(const Key('Calendario')));
     await tester.pumpAndSettle();
     expect(find.text('Febbraio 2026'), findsOne, reason: 'still the Calendar');
 
-    await tester.tap(find.byTooltip('Impostazioni'));
+    await tester.tap(find.byKey(const Key('Impostazioni')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Impostazioni'));
+    await tester.tap(find.byKey(const Key('Impostazioni')));
     await tester.pumpAndSettle();
 
     expect(
@@ -170,13 +171,14 @@ void main() {
 
     await tester.fling(find.byType(PageView), const Offset(-400, 0), 1000);
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilterChip, ShiftType.notte.code));
+    final chip = find.widgetWithText(Button, ShiftType.notte.code);
+    await tester.tap(chip);
     await tester.pumpAndSettle();
     expect(find.text('Marzo 2026'), findsOne);
 
-    await tester.tap(find.byTooltip('Impostazioni'));
+    await tester.tap(find.byKey(const Key('Impostazioni')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Calendario'));
+    await tester.tap(find.byKey(const Key('Calendario')));
     await tester.pumpAndSettle();
 
     expect(
@@ -184,29 +186,38 @@ void main() {
       findsOne,
       reason: 'not rebuilt to page one',
     );
-    expect(
-      tester
-          .widget<FilterChip>(
-            find.widgetWithText(FilterChip, ShiftType.notte.code),
-          )
-          .selected,
-      isTrue,
-    );
+    final semantics = find
+        .ancestor(
+          of: find.descendant(of: chip, matching: find.byType(Text)),
+          matching: find.byType(Semantics),
+        )
+        .evaluate()
+        .first
+        .widget as Semantics;
+    expect(semantics.properties.selected, isTrue);
   });
 
   testWidgets('Modifica pushes the Month Editor full-screen, covering the '
       'bar, and Save returns to a refreshed Calendar', (tester) async {
     await pumpShell(tester);
 
-    await tester.tap(find.byTooltip('Modifica'));
+    await tester.tap(find.byKey(const Key('Modifica')));
     await tester.pumpAndSettle();
 
     expect(find.byType(MonthEditorPage), findsOne);
     expect(find.text('Febbraio 2026'), findsOne, reason: "editor's app bar");
-    expect(find.byTooltip('Modifica'), findsNothing, reason: 'bar covered');
-    expect(find.byTooltip('Impostazioni'), findsNothing, reason: 'bar covered');
     expect(
-      find.byTooltip('Calendario'),
+      find.byKey(const Key('Modifica')),
+      findsNothing,
+      reason: 'bar covered',
+    );
+    expect(
+      find.byKey(const Key('Impostazioni')),
+      findsNothing,
+      reason: 'bar covered',
+    );
+    expect(
+      find.byKey(const Key('Calendario')),
       findsNothing,
       reason: 'no escape hatch out of unsaved work',
     );
@@ -217,7 +228,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(MonthEditorPage), findsNothing);
-    expect(find.byTooltip('Modifica'), findsOne, reason: 'back on the Shell');
+    expect(
+      find.byKey(const Key('Modifica')),
+      findsOne,
+      reason: 'back on the Shell',
+    );
     expect(find.text(ShiftType.riposo.code), findsWidgets);
   });
 
@@ -228,7 +243,7 @@ void main() {
     // still null — is exactly what the Shell sees while a first load hangs.
     final cubit = CalendarCubit(repository, clock: () => DateTime(2026, 2, 15));
     await tester.pumpWidget(
-      MaterialApp(
+      ShadcnApp(
         theme: lightTheme,
         home: MultiBlocProvider(
           providers: [
@@ -269,7 +284,7 @@ void main() {
       isNotNull,
     );
 
-    await tester.tap(find.byTooltip('Impostazioni'));
+    await tester.tap(find.byKey(const Key('Impostazioni')));
     await tester.pumpAndSettle();
 
     expect(

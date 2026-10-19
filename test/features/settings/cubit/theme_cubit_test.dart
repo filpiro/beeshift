@@ -1,6 +1,6 @@
 import 'package:beeshift/features/settings/cubit/theme_cubit.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// The cubit is the whole seam: storage is a pair of injected functions, so
 /// every case here runs without touching SharedPreferences at all.

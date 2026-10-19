@@ -5,9 +5,9 @@ import 'package:beeshift/shared/shift_colors.dart';
 import 'package:beeshift/shared/shift_type.dart';
 import 'package:beeshift/shared/theme.dart';
 import 'package:beeshift/shared/widgets/equal_row_segmented.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../../data/fake_shifts_repository.dart';
 
@@ -27,7 +27,7 @@ void main() {
     );
     await calendar.load();
     await tester.pumpWidget(
-      MaterialApp(
+      ShadcnApp(
         theme: lightTheme,
         home: MultiBlocProvider(
           providers: [
@@ -46,7 +46,7 @@ void main() {
   }
 
   Future<void> openEditor(WidgetTester tester) async {
-    await tester.tap(find.byTooltip('Modifica'));
+    await tester.tap(find.byKey(const Key('Modifica')));
     await tester.pumpAndSettle();
   }
 
@@ -84,9 +84,15 @@ void main() {
       expect(find.text(shift.code), findsWidgets, reason: shift.code);
       expect(find.text(shift.label), findsNothing, reason: shift.label);
     }
-    expect(find.byType(Divider), findsNothing, reason: 'space, not lines');
+    // A header divider now separates the AppBar from the body — that one is
+    // structural, not a line between rows, so the check is scoped to the list.
+    expect(
+      find.descendant(of: find.byType(ListView), matching: find.byType(Divider)),
+      findsNothing,
+      reason: 'space, not lines',
+    );
     expect(find.byType(RadioGroup<ShiftType>), findsNothing);
-    expect(find.byType(Radio<ShiftType>), findsNothing);
+    expect(find.byType(Radio), findsNothing);
   });
 
   testWidgets('a day line names the weekday in full', (tester) async {
@@ -183,42 +189,42 @@ void main() {
     await pumpCalendar(tester, shifts: {'2026-02-01': ShiftType.notte});
     await openEditor(tester);
     final theme = Theme.of(tester.element(find.text('Salva')));
-    final colors = theme.extension<ShiftColors>()!;
+    const colors = ShiftColors.light;
 
     /// The style the first day's given code is drawn with.
-    ButtonStyle styleOf(String code) => tester
-        .widget<OutlinedButton>(
-          find
-              .ancestor(
-                of: find.text(code),
-                matching: find.byType(OutlinedButton),
-              )
-              .first,
-        )
-        .style!;
+    ({BorderSide? side, TextStyle? label, bool filled}) styleOf(String code) {
+      final button = find
+          .ancestor(of: find.text(code), matching: find.byType(Button))
+          .first;
+      final widget = tester.widget<Button>(button);
+      final context = tester.element(button);
+      final decoration =
+          widget.style.decoration(context, const {}) as BoxDecoration;
+      final border = decoration.border as Border?;
+      return (
+        side: border == null
+            ? null
+            : BorderSide(color: border.top.color, width: border.top.width),
+        label: widget.style.textStyle(context, const {}),
+        filled: (decoration.color?.a ?? 0) > 0,
+      );
+    }
 
     // Every choice is outlined — nothing is a filled face any more, which is
     // what makes the colour the whole signal.
-    expect(find.byType(FilledButton), findsNothing);
-
     final picked = styleOf(ShiftType.notte.code);
-    expect(picked.side?.resolve({})?.color, colors[ShiftType.notte]);
-    expect(picked.side?.resolve({})?.width, 1);
-    expect(picked.textStyle?.resolve({})?.fontWeight, FontWeight.bold);
-    expect(picked.foregroundColor?.resolve({}), colors[ShiftType.notte]);
+    expect(picked.side?.color, colors[ShiftType.notte]);
+    expect(picked.side?.width, 1);
+    expect(picked.label?.fontWeight, FontWeight.bold);
+    expect(picked.label?.color, colors[ShiftType.notte]);
+    expect(picked.filled, isFalse);
 
     final quiet = styleOf(ShiftType.riposo.code);
-    expect(quiet.side?.resolve({})?.color, theme.colorScheme.outlineVariant);
-    expect(quiet.textStyle?.resolve({})?.fontWeight, FontWeight.normal);
-    expect(
-      quiet.foregroundColor?.resolve({}),
-      theme.colorScheme.onSurfaceVariant,
-    );
-    // The same heading-sized letter the Filter's chips take.
-    expect(
-      picked.textStyle?.resolve({})?.fontSize,
-      theme.textTheme.titleMedium?.fontSize,
-    );
+    expect(quiet.side?.color, theme.colorScheme.border);
+    expect(quiet.label?.fontWeight, FontWeight.normal);
+    expect(quiet.label?.color, theme.colorScheme.mutedForeground);
+    // The same heading-sized letter the Filter's letters take.
+    expect(picked.label?.fontSize, theme.typography.base.fontSize);
   });
 
   testWidgets('tapping a code writes nothing until Save', (tester) async {
@@ -248,7 +254,7 @@ void main() {
       {'2026-02-01': ShiftType.riposo},
     ]);
     // Popped back to the Calendar, which now shows the saved Shift.
-    expect(find.byTooltip('Modifica'), findsOne);
+    expect(find.byKey(const Key('Modifica')), findsOne);
     expect(find.text(ShiftType.riposo.code), findsWidgets);
   });
 
@@ -269,7 +275,11 @@ void main() {
       await failingSave(tester);
 
       expect(find.text('Febbraio 2026'), findsOne, reason: 'still the editor');
-      expect(find.byTooltip('Modifica'), findsNothing, reason: 'did not pop');
+      expect(
+        find.byKey(const Key('Modifica')),
+        findsNothing,
+        reason: 'did not pop',
+      );
       expect(
         tester
             .widget<EqualRowSegmented<ShiftType>>(
@@ -285,13 +295,12 @@ void main() {
     ) async {
       await failingSave(tester);
 
-      expect(find.byType(MaterialBanner), findsOne);
-      expect(find.byType(SnackBar), findsNothing, reason: 'not a toast');
+      expect(find.byType(Alert), findsOne);
 
       // Still there long after any toast would have gone.
       await tester.pump(const Duration(seconds: 30));
       await tester.pumpAndSettle();
-      expect(find.byType(MaterialBanner), findsOne);
+      expect(find.byType(Alert), findsOne);
     });
 
     testWidgets('Save retries and succeeds once connectivity returns', (
@@ -309,7 +318,7 @@ void main() {
         {'2026-02-01': ShiftType.riposo},
       ]);
       expect(
-        find.byTooltip('Modifica'),
+        find.byKey(const Key('Modifica')),
         findsOne,
         reason: 'back on the Calendar',
       );

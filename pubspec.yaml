@@ -9,10 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  catui:
-    git:
-      url: https://github.com/filpiro/catui
-      ref: main
+  shadcn_flutter: ^0.0.54
   flutter_bloc: ^9.1.1
   libsql_dart: ^0.9.0+0.9.30
   path_provider: ^2.1.6
@@ -22,6 +19,3 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-
-flutter:
-  uses-material-design: true

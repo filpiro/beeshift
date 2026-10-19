@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/shifts_repository.dart';
@@ -97,10 +98,18 @@ class _MainAppState extends State<MainApp> {
     return BlocProvider.value(
       value: _themeCubit,
       child: BlocBuilder<ThemeCubit, ThemeMode>(
-        builder: (context, themeMode) => MaterialApp(
+        builder: (context, themeMode) => ShadcnApp(
           theme: lightTheme,
           darkTheme: darkTheme,
           themeMode: themeMode,
+          // Material's AppBar set the status bar icons per brightness; shadcn
+          // does not, so Light mode drew white icons on a white ground.
+          builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+            value: Theme.of(context).brightness == Brightness.dark
+                ? SystemUiOverlayStyle.light
+                : SystemUiOverlayStyle.dark,
+            child: child!,
+          ),
           // No Scaffold here: each of the three states brings its own, so the
           // Shell's bar cannot float over the other two.
           home: FutureBuilder(
@@ -116,7 +125,7 @@ class _MainAppState extends State<MainApp> {
                 // handed a closure that returns the Future it has just
                 // assigned.
                 return Scaffold(
-                  body: SafeArea(
+                  child: SafeArea(
                     child: _ConnectError(
                       onRetry: () {
                         setState(() {
@@ -130,7 +139,7 @@ class _MainAppState extends State<MainApp> {
               final repository = snapshot.data;
               if (repository == null) {
                 return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
+                  child: Center(child: CircularProgressIndicator()),
                 );
               }
               return BlocProvider(
@@ -160,7 +169,7 @@ class _ConnectError extends StatelessWidget {
         children: [
           const Text('Impossibile aprire il database.'),
           const SizedBox(height: 12),
-          FilledButton(onPressed: onRetry, child: const Text('Riprova')),
+          PrimaryButton(onPressed: onRetry, child: const Text('Riprova')),
         ],
       ),
     );

@@ -1,6 +1,5 @@
-import 'package:catui/catui.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../../data/shifts_repository.dart';
 import '../../shared/widgets/floating_bottom_bar.dart';
@@ -32,14 +31,11 @@ class _ShellPageState extends State<ShellPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
+      child: Stack(
         children: [
           IndexedStack(
             index: _index,
-            children: [
-              const CalendarPage(),
-              const SettingsPage(),
-            ],
+            children: [const CalendarPage(), const SettingsPage()],
           ),
           Align(
             alignment: Alignment.bottomCenter,
@@ -90,7 +86,7 @@ class _ShellPageState extends State<ShellPage> {
   Future<void> _openEditor(BuildContext context) async {
     final calendar = context.read<CalendarCubit>();
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(
+      ShadcnPageRoute<void>(
         builder: (_) => BlocProvider(
           create: (_) => MonthEditorCubit(
             widget.repository,

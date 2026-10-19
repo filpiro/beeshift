@@ -1,5 +1,7 @@
 # Shift Colours live in beeshift's theme, not in `catui`
 
+> **Superseded** by [ADR-0006](0006-shadcn-flutter-replaces-catui.md).
+
 Each Shift Type carries one Shift Colour. The mapping is a `ThemeExtension` registered by beeshift's own theme, built per flavor, and read from context like every other colour.
 
 ## Considered Options
